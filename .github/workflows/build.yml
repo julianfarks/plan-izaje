@@ -86,6 +86,8 @@ jobs:
         if: failure()
         run: |
           grep -hE -A20 "(Exception|Error)[:]" salida-emulador.txt | grep -vE '^\s+at (androidx|java|kotlin|org\.junit|android\.)' | head -45 | tr '\n' '~' | fold -w 900 | while IFS= read -r l; do echo "::error title=detalle::$l"; done
+          grep -hE "FAILED|crash|Crash|tests on|Test run failed|Instrumentation" salida-emulador.txt | head -20 | tr '\n' '~' | fold -w 900 | while IFS= read -r l; do echo "::error title=resumen::$l"; done
+          tail -c 2500 salida-emulador.txt | tr '\n' '~' | fold -w 900 | while IFS= read -r l; do echo "::error title=cola::$l"; done
           exit 0
       - name: Informe de pruebas en emulador
         if: always()
