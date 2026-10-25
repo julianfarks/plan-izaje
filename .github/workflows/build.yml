@@ -86,7 +86,8 @@ jobs:
             adb logcat -d -s OCR_PLANIZAJE:I > ocr.txt
       - name: Informe de lectura OCR de las placas reales
         if: always()
-        run: grep -h "OCR_PLANIZAJE" ocr.txt 2>/dev/null | sed 's/.*OCR_PLANIZAJE[^:]*: //' | while IFS= read -r l; do echo "::notice title=ocr::$l"; done || true
+        run: |
+          grep -h "OCR_PLANIZAJE" ocr.txt 2>/dev/null | sed 's/.*OCR_PLANIZAJE[^:]*: //' | while IFS= read -r l; do echo "::notice title=ocr::$l"; done || true
       - name: Publicar errores como anotaciones
         if: failure()
         run: |
