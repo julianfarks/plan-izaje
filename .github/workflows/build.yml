@@ -85,8 +85,7 @@ jobs:
       - name: Publicar errores como anotaciones
         if: failure()
         run: |
-          grep -hE "^e: |FAILED|Exception|Error:|expected|Assertion" salida-emulador.txt | head -40 | while IFS= read -r l; do echo "::error::${l:0:900}"; done || true
-          grep -hA14 "AssertionError" salida-emulador.txt | head -60 | tr '\n' '~' | fold -w 900 | while IFS= read -r l; do echo "::error title=detalle::$l"; done || true
+          grep -hA25 "AssertionError" salida-emulador.txt | grep -v '^\s*at ' | head -40 | tr '\n' '~' | fold -w 900 | while IFS= read -r l; do echo "::error title=detalle::$l"; done || true
           for f in $(find app/build/outputs/androidTest-results -name "*.xml" 2>/dev/null); do
             python3 - "$f" <<'PY'
           import sys, xml.etree.ElementTree as ET
