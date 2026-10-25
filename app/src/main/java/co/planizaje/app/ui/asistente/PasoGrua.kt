@@ -32,6 +32,7 @@ import co.planizaje.app.ui.comp.ChipEstado
 import co.planizaje.app.ui.comp.FilaDato
 import co.planizaje.app.ui.comp.LocalAlmacen
 import co.planizaje.app.ui.comp.Seccion
+import co.planizaje.app.ui.comp.objetivo
 import co.planizaje.app.ui.comp.Selector
 import co.planizaje.app.ui.theme.Paleta
 import co.planizaje.core.model.Grua
@@ -44,7 +45,7 @@ fun PasoGrua(c: Ctx) {
 
     Ayuda("Elige la grúa de tu biblioteca y la tabla de carga que corresponde a la configuración real de la maniobra (extensiones, estabilizadores y sector).")
 
-    Seccion("Grúa del proyecto", icono = Icons.Filled.LocalShipping) {
+    Seccion("Grúa del proyecto", icono = Icons.Filled.LocalShipping, modifier = Modifier.objetivo("grua")) {
         if (c.gruas.isEmpty()) {
             Text("Aún no tienes grúas registradas.", style = MaterialTheme.typography.bodyLarge)
         }
@@ -97,12 +98,14 @@ fun PasoGrua(c: Ctx) {
     Seccion("Configuración de la maniobra", icono = Icons.Filled.TableChart) {
         if (g.tablas.isEmpty()) {
             Aviso("Esta grúa no tiene tablas de carga. Sin tabla oficial la capacidad queda «no verificable». Cárgala desde el diagrama de carga de tu grúa.", Paleta.Mal, Paleta.MalFondo, "✕")
-            Button(onClick = { c.nav.navigate(Rutas.grua(g.id)) }) { Text("Agregar tabla de carga") }
+            Button(onClick = { c.nav.navigate(Rutas.importarTabla(g.id)) }, modifier = Modifier.fillMaxWidth()) { Text("Importar tabla (foto o PDF)") }
+            OutlinedButton(onClick = { c.nav.navigate(Rutas.grua(g.id)) }) { Text("Escribirla a mano en la ficha") }
         } else {
             Selector(
                 "Tabla de carga aplicable", g.tablas, g.tablas.firstOrNull { it.id == c.p.maniobra.tablaId },
-                { t -> t.nombre.ifBlank { t.configuracionPluma.ifBlank { "Tabla sin nombre" } } },
+                { t -> (if (t.identificacionPendiente) "⚠ " else "") + t.nombre.ifBlank { t.configuracionPluma.ifBlank { "Tabla sin nombre" } } + (if (t.identificacionPendiente) " (pendiente de identificación)" else "") },
                 { t -> c.actualizar("Tabla de carga: ${t.nombre}") { it.copy(maniobra = it.maniobra.copy(tablaId = t.id, estabilizadoresId = t.estabilizadoresId ?: it.maniobra.estabilizadoresId)) } },
+                clave = "tabla",
             )
         }
         if (g.estabilizadores.isNotEmpty()) {

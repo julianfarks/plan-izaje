@@ -1,5 +1,6 @@
 package co.planizaje.app.ui.gruas
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -24,6 +25,8 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -146,19 +149,23 @@ fun EditorGrua(nav: NavController, id: String, onAtras: () -> Unit) {
     val gruas by almacen.gruas.collectAsState()
     val g = gruas.firstOrNull { it.id == id }
     var borrar by remember { mutableStateOf(false) }
+    var voz by remember { mutableStateOf(false) }
     if (g == null) {
         Scaffold(topBar = { BarraSuperior("Grúa", onAtras) }) { pad -> Text("Grúa no encontrada", Modifier.padding(pad).padding(16.dp)) }
         return
     }
     fun upd(f: (Grua) -> Grua) = almacen.guardarGrua(f(g))
+    if (voz) co.planizaje.app.voz.HojaVoz(co.planizaje.core.ia.Ambito.FICHA_GRUA, null, g.id) { voz = false }
 
     Scaffold(topBar = {
         BarraSuperior(g.nombreCorto, onAtras, subtitulo = "Ficha de la grúa", acciones = {
+            IconButton(onClick = { voz = true }) { Icon(Icons.Filled.Mic, "Dictar datos de la grúa") }
             IconButton(onClick = { borrar = true }) { Icon(Icons.Filled.Delete, "Eliminar grúa") }
         })
     }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             if (g.notas.isNotBlank()) Aviso(g.notas)
+            androidx.compose.material3.FilledTonalButton(onClick = { voz = true }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Filled.Mic, null); Text("  Dictar los datos que conozcas") }
             Seccion("Identificación", icono = Icons.Filled.Badge) {
                 CampoTexto(g.fabricante, { v -> upd { it.copy(fabricante = v) } }, "Fabricante", obligatorio = true, marcador = "Ej. Palfinger")
                 CampoTexto(g.modelo, { v -> upd { it.copy(modelo = v) } }, "Modelo exacto", obligatorio = true, marcador = "Ej. PK 23500")
@@ -213,10 +220,16 @@ fun EditorGrua(nav: NavController, id: String, onAtras: () -> Unit) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(t.nombre.ifBlank { "Tabla sin nombre" }, fontWeight = FontWeight.Bold)
                             Text("${t.puntos.size} valores · ${t.configuracionPluma}", style = MaterialTheme.typography.bodySmall)
+                            if (t.identificacionPendiente) Etiqueta("✕", "Pendiente de identificación: no se usa en cálculos", Paleta.Mal, Paleta.MalFondo)
+                            if (t.tieneDudosos) Etiqueta("!", "${t.puntos.count { it.dudoso }} valor(es) dudosos", Paleta.Revisar, Paleta.RevisarFondo)
+                            if (t.origen != co.planizaje.core.model.OrigenTabla.MANUAL) Text(t.origen.etiqueta, style = MaterialTheme.typography.labelSmall)
                             if (t.verificacion.valida) Etiqueta("✓", "Verificada por ${t.verificacion.porQuien}", Paleta.Ok, Paleta.OkFondo)
                             else Etiqueta("!", "Sin verificar", Paleta.Revisar, Paleta.RevisarFondo)
                         }
                     }
+                }
+                androidx.compose.material3.Button(onClick = { nav.navigate(Rutas.importarTabla(g.id)) }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.PhotoCamera, null); Text("  Importar tabla de carga (foto o PDF)")
                 }
                 OutlinedButton(onClick = {
                     val t = TablaCarga(nuevoId(), nombre = "Tabla ${g.tablas.size + 1}")
@@ -255,7 +268,13 @@ fun EditorTabla(gruaId: String, tablaId: String, onAtras: () -> Unit) {
         // Cualquier cambio en los valores invalida la verificación previa.
         almacen.guardarGrua(g.copy(tablas = g.tablas.map { if (it.id == t.id) f(it) else it }))
     }
-    fun updValores(f: (TablaCarga) -> TablaCarga) = upd { f(it).copy(verificacion = Verificacion()) }
+    fun updValores(f: (TablaCarga) -> TablaCarga) = upd { tt ->
+        val n = f(tt).copy(verificacion = Verificacion())
+        if (tt.origen != co.planizaje.core.model.OrigenTabla.MANUAL && n.puntos != tt.puntos) {
+            val nota = "Valores editados a mano el ${java.time.LocalDate.now()}"
+            if (n.correcciones.lastOrNull() != nota) n.copy(correcciones = n.correcciones + nota) else n
+        } else n
+    }
     val docFuente = g.documentos.firstOrNull { it.id == t.fuente.adjuntoId }
 
     Scaffold(topBar = {
@@ -265,6 +284,19 @@ fun EditorTabla(gruaId: String, tablaId: String, onAtras: () -> Unit) {
     }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             if (t.notas.isNotBlank()) Aviso(t.notas)
+            if (t.origen == co.planizaje.core.model.OrigenTabla.IMPORTADA_OCR || t.origen == co.planizaje.core.model.OrigenTabla.IMPORTADA_IA) {
+                Seccion("Importación", icono = Icons.Filled.Description, desplegable = true, inicialAbierta = t.identificacionPendiente || t.tieneDudosos,
+                    subtitulo = "${t.origen.etiqueta} · ${java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.forLanguageTag("es-CO")).format(java.util.Date(t.fechaImportacion))}") {
+                    if (t.modeloDetectado.isNotBlank()) Text("Leído en el documento: ${t.modeloDetectado}", style = MaterialTheme.typography.bodyMedium)
+                    if (t.unidades.isNotBlank()) Text("Unidades detectadas: ${t.unidades}", style = MaterialTheme.typography.bodyMedium)
+                    FilaInterruptor(
+                        "Pertenece a esta grúa y configuración", !t.identificacionPendiente, { b -> upd { it.copy(identificacionPendiente = !b, verificacion = Verificacion()) } },
+                        "Mientras esté desactivado, la tabla se conserva como documento pendiente de identificación y no se usa en los cálculos.",
+                    )
+                    if (t.advertenciasImportacion.isNotEmpty()) { Text("Advertencias de la lectura", style = MaterialTheme.typography.labelLarge); t.advertenciasImportacion.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall) } }
+                    if (t.correcciones.isNotEmpty()) { Text("Correcciones manuales", style = MaterialTheme.typography.labelLarge); t.correcciones.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall) } }
+                }
+            }
             Seccion("Configuración", icono = Icons.Filled.Settings) {
                 CampoTexto(t.nombre, { v -> upd { it.copy(nombre = v) } }, "Nombre de la tabla", marcador = "Ej. 6 extensiones hidráulicas")
                 CampoTexto(t.configuracionPluma, { v -> updValores { it.copy(configuracionPluma = v) } }, "Configuración de pluma", obligatorio = true)
@@ -282,10 +314,11 @@ fun EditorTabla(gruaId: String, tablaId: String, onAtras: () -> Unit) {
                 Row { Text("Radio (m)", Modifier.weight(1f), fontWeight = FontWeight.Bold); Text("Capacidad (kg)", Modifier.weight(1.2f), fontWeight = FontWeight.Bold); Text("Alt. máx (m)", Modifier.weight(1f), fontWeight = FontWeight.Bold); Spacer(Modifier.width(40.dp)) }
                 t.puntos.forEachIndexed { i, pt ->
                     androidx.compose.runtime.key(i, t.puntos.size) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.background(if (pt.dudoso) Paleta.RevisarFondo else androidx.compose.ui.graphics.Color.Transparent, RoundedCornerShape(8.dp))) {
                             CampoNumero(pt.radio, { v -> v?.let { r -> updValores { tt -> tt.copy(puntos = tt.puntos.mapIndexed { j, x -> if (j == i) x.copy(radio = r) else x }) } } }, "", "m", Modifier.weight(1f))
                             CampoNumero(pt.capacidad, { v -> v?.let { c -> updValores { tt -> tt.copy(puntos = tt.puntos.mapIndexed { j, x -> if (j == i) x.copy(capacidad = c) else x }) } } }, "", "kg", Modifier.weight(1.2f))
                             CampoNumero(pt.alturaMax, { v -> updValores { tt -> tt.copy(puntos = tt.puntos.mapIndexed { j, x -> if (j == i) x.copy(alturaMax = v) else x }) } }, "", "m", Modifier.weight(1f))
+                            if (pt.dudoso) androidx.compose.material3.TextButton(onClick = { upd { tt -> tt.copy(puntos = tt.puntos.mapIndexed { j, x -> if (j == i) x.copy(dudoso = false) else x }, verificacion = Verificacion()) } }) { Text("Ok", color = Paleta.Revisar) }
                             IconButton(onClick = { updValores { tt -> tt.copy(puntos = tt.puntos.filterIndexed { j, _ -> j != i }) } }) { Icon(Icons.Filled.Delete, "Quitar fila") }
                         }
                     }
@@ -303,6 +336,7 @@ fun EditorTabla(gruaId: String, tablaId: String, onAtras: () -> Unit) {
                 val ord = t.ordenados
                 if (ord.zipWithNext().any { (a, b) -> b.capacidad > a.capacidad }) Aviso("Hay capacidades que aumentan al aumentar el radio. Compruébalo con el diagrama.")
                 if (t.puntos.any { it.capacidad <= 0 }) Aviso("Hay filas con capacidad 0.", Paleta.Mal, Paleta.MalFondo, "✕")
+                if (t.tieneDudosos) Aviso("${t.puntos.count { it.dudoso }} valor(es) leídos con poca seguridad. Compáralos con el documento y pulsa «Ok» en cada uno.")
             }
             Seccion("Fuente y verificación", icono = Icons.Filled.Description) {
                 CampoTexto(t.fuente.documento, { v -> upd { it.copy(fuente = it.fuente.copy(documento = v)) } }, "Documento", obligatorio = true, marcador = "Ej. Diagrama de carga en cabina / Manual de uso")
@@ -319,10 +353,11 @@ fun EditorTabla(gruaId: String, tablaId: String, onAtras: () -> Unit) {
                 CampoFecha(t.verificacion.fecha, { v -> upd { it.copy(verificacion = it.verificacion.copy(fecha = v)) } }, "Fecha")
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(t.verificacion.verificado, { b -> upd { it.copy(verificacion = it.verificacion.copy(verificado = b)) } },
-                        enabled = t.verificacion.porQuien.isNotBlank() && t.fuente.completa && t.puntos.isNotEmpty() && g.identificada)
+                        enabled = t.verificacion.porQuien.isNotBlank() && t.fuente.completa && t.puntos.isNotEmpty() && g.identificada && !t.tieneDudosos && !t.identificacionPendiente)
                     Text("Confirmo que los valores coinciden con el documento original de esta grúa", style = MaterialTheme.typography.bodyMedium)
                 }
                 if (!g.identificada) Text("Para verificar, completa primero fabricante, modelo y nº de serie de la grúa.", style = MaterialTheme.typography.bodySmall, color = Paleta.Revisar)
+                if (t.tieneDudosos || t.identificacionPendiente) Text("Para verificar, resuelve antes los valores dudosos y confirma que la tabla pertenece a esta grúa.", style = MaterialTheme.typography.bodySmall, color = Paleta.Revisar)
             }
             Seccion("Notas", desplegable = true, inicialAbierta = false) {
                 CampoTexto(t.notas, { v -> upd { it.copy(notas = v) } }, "Notas", multilinea = true)

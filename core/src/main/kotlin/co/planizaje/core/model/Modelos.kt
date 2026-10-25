@@ -91,7 +91,17 @@ data class PuntoTabla(
     val capacidad: Double,
     /** Altura máxima de gancho en ese radio (m), opcional. */
     val alturaMax: Double? = null,
+    /** true si el valor salió de un reconocimiento automático con poca confianza: pendiente de verificar. */
+    val dudoso: Boolean = false,
 )
+
+@Serializable
+enum class OrigenTabla(val etiqueta: String) {
+    MANUAL("Introducida a mano"),
+    PLANTILLA_FOTO("Transcrita de una foto (plantilla)"),
+    IMPORTADA_OCR("Leída de una foto con reconocimiento de texto"),
+    IMPORTADA_IA("Leída de una foto con servicio de IA"),
+}
 
 @Serializable
 data class TablaCarga(
@@ -113,8 +123,22 @@ data class TablaCarga(
     val fuente: FuenteTecnica = FuenteTecnica(),
     val verificacion: Verificacion = Verificacion(),
     val notas: String = "",
+    val origen: OrigenTabla = OrigenTabla.MANUAL,
+    val fechaImportacion: Long = 0L,
+    /** Fabricante/modelo que se leyó en el documento importado (puede no coincidir con la grúa). */
+    val modeloDetectado: String = "",
+    val unidades: String = "",
+    /**
+     * true = no está confirmado que la tabla pertenezca a esta grúa/configuración.
+     * Se guarda como documento, pero nunca se usa como fuente validada para cálculos.
+     */
+    val identificacionPendiente: Boolean = false,
+    /** Registro de correcciones manuales sobre lo leído automáticamente. */
+    val correcciones: List<String> = emptyList(),
+    val advertenciasImportacion: List<String> = emptyList(),
 ) {
     val ordenados: List<PuntoTabla> get() = puntos.sortedBy { it.radio }
+    val tieneDudosos: Boolean get() = puntos.any { it.dudoso }
 }
 
 @Serializable
@@ -398,6 +422,8 @@ data class Aparejo(
     val longitudRamal: Double? = null,
     /** Distancia horizontal entre puntos de izaje opuestos (m). */
     val separacionPuntos: Double? = null,
+    /** true si [anguloVertical] es el ángulo MÁXIMO planificado (no debe superarse en campo). */
+    val anguloEsMaximo: Boolean = false,
     /** Ramales que se consideran portantes cuando hay 3 o 4 (criterio conservador). */
     val ramalesPortantes: Int? = null,
     val eslingaIds: List<String> = emptyList(),
@@ -422,6 +448,14 @@ data class Maniobra(
     val presionAdmisibleKpa: Double? = null,
     val fuentePresionAdmisible: String = "",
     val alturaPluma: Double? = null,
+    /**
+     * Comprobaciones especializadas. null = valor por defecto según el tipo de grúa
+     * (en grúas articuladas no son obligatorias en todas las maniobras; se activan cuando el trabajo lo requiere).
+     */
+    val comprobarTerreno: Boolean? = null,
+    val comprobarPuntosIzaje: Boolean? = null,
+    /** Posición de la grúa, estabilizadores, distancias de referencia y otras notas del emplazamiento. */
+    val notasEmplazamiento: String = "",
 )
 
 // ---------------------------------------------------------------- PROCEDIMIENTO
@@ -494,6 +528,17 @@ data class RevisionHumana(
     val huellaDatos: String = "",
 )
 
+/** Dato aportado por voz/texto/IA que quedó aproximado o pendiente de confirmar. */
+@Serializable
+data class Pendiente(
+    val clave: String,
+    val etiqueta: String,
+    val valor: String,
+    val nota: String = "",
+    val origen: String = "voz",
+    val fecha: Long = 0L,
+)
+
 @Serializable
 data class Proyecto(
     val id: String,
@@ -520,6 +565,7 @@ data class Proyecto(
     val historial: List<Cambio> = emptyList(),
     val versionesPdf: List<VersionPdf> = emptyList(),
     val pasosVistos: Set<Paso> = emptySet(),
+    val pendientes: List<Pendiente> = emptyList(),
     val archivado: Boolean = false,
     val creado: Long = 0L,
     val modificado: Long = 0L,

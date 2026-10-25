@@ -309,7 +309,7 @@ class MotorTest {
 
     @Test fun planCompletoQuedaListoParaRevisionNuncaSeguro() {
         val g = grua.copy(estabilizadores = emptyList())
-        val p = proyectoBase().let { it.copy(aparejo = it.aparejo.copy(metodoAngulo = MetodoAngulo.GEOMETRIA, longitudRamal = 2.0, separacionPuntos = 2.0)) }
+        val p = proyectoBase().let { it.copy(aparejo = it.aparejo.copy(metodoAngulo = MetodoAngulo.GEOMETRIA, longitudRamal = 2.0, separacionPuntos = 2.0), maniobra = it.maniobra.copy(comprobarTerreno = true)) }
         val ev = Motor.evaluar(p, g, listOf(eslinga, eslinga2), hoy)
         // La presión sobre el terreno no es verificable sin datos del fabricante: el plan sigue en borrador.
         assertEquals(EstadoDato.NO_VERIFICABLE, ev.resultados.first { it.id == "apoyos" }.estado)

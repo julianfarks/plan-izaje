@@ -77,7 +77,7 @@ fun PasoVerificacion(c: Ctx) {
     if (ev.faltantes.isNotEmpty()) {
         Seccion("Datos que faltan", subtitulo = "Toca para ir al paso") {
             ev.faltantes.forEach { f ->
-                Row(Modifier.fillMaxWidth().clickable { c.irAPaso(f.paso) }.padding(vertical = 6.dp)) {
+                Row(Modifier.fillMaxWidth().clickable { c.irACampo(f.paso, f.campo) }.padding(vertical = 6.dp)) {
                     Text("…  ", color = Paleta.Pendiente, fontWeight = FontWeight.Bold)
                     Text(f.texto, Modifier.weight(1f))
                     Text("Paso ${f.paso.numero}", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
@@ -88,7 +88,24 @@ fun PasoVerificacion(c: Ctx) {
 
     ev.resultados.groupBy { it.grupo }.forEach { (grupo, lista) ->
         Text(grupo, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp))
-        lista.forEach { TarjetaResultado(it) { c.irAPaso(it.paso) } }
+        lista.forEach { TarjetaResultado(it) { c.irACampo(it.paso, it.campo) } }
+    }
+
+    if (c.p.pendientes.isNotEmpty()) {
+        Seccion("Datos aproximados o pendientes de confirmar", subtitulo = "Aportados por voz o IA") {
+            Text("Confírmalos cuando los hayas comprobado. Mientras tanto aparecen así en el PDF.", style = MaterialTheme.typography.bodySmall)
+            c.p.pendientes.forEach { pe ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("≈ ${pe.etiqueta}", fontWeight = FontWeight.Bold, color = Paleta.Revisar)
+                        Text(pe.valor, style = MaterialTheme.typography.bodyMedium)
+                        if (pe.nota.isNotBlank()) Text(pe.nota, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    TextButton(onClick = { c.actualizar("Confirmado: ${pe.etiqueta}") { it.copy(pendientes = it.pendientes - pe) } }) { Text("Confirmado") }
+                }
+                HorizontalDivider()
+            }
+        }
     }
 
     RevisionHumanaSeccion(c)

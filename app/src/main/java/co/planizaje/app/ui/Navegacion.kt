@@ -26,7 +26,9 @@ object Rutas {
     const val ACCESORIOS = "accesorios"
     const val PLANES = "planes"
     const val COPIAS = "copias"
-    fun asistente(id: String, paso: Int = 0) = "asistente/$id?paso=$paso"
+    fun asistente(id: String, paso: Int = 0, voz: Boolean = false) = "asistente/$id?paso=$paso&voz=$voz"
+    fun importarTabla(gruaId: String) = "importar/$gruaId"
+    const val AJUSTES_IA = "ajustes-ia"
     fun croquis(id: String) = "croquis/$id"
     fun grua(id: String) = "grua/$id"
     fun tabla(gruaId: String, tablaId: String) = "tabla/$gruaId/$tablaId"
@@ -40,9 +42,18 @@ fun Navegacion(nav: NavHostController = rememberNavController()) {
         composable(Rutas.INICIO) { PantallaInicio(nav) }
         composable(Rutas.PROYECTOS) { PantallaProyectos(nav, atras) }
         composable(
-            "asistente/{id}?paso={paso}",
-            arguments = listOf(navArgument("id") { type = NavType.StringType }, navArgument("paso") { type = NavType.IntType; defaultValue = 0 }),
-        ) { b -> PantallaAsistente(nav, b.arguments!!.getString("id")!!, b.arguments!!.getInt("paso"), atras) }
+            "asistente/{id}?paso={paso}&voz={voz}",
+            arguments = listOf(
+                navArgument("id") { type = NavType.StringType },
+                navArgument("paso") { type = NavType.IntType; defaultValue = 0 },
+                navArgument("voz") { type = NavType.BoolType; defaultValue = false },
+            ),
+        ) { b -> PantallaAsistente(nav, b.arguments!!.getString("id")!!, b.arguments!!.getInt("paso"), atras, b.arguments!!.getBoolean("voz")) }
+        composable("importar/{g}") { b ->
+            val g = b.arguments!!.getString("g")!!
+            co.planizaje.app.tabla.PantallaImportarTabla(g, atras) { t -> nav.popBackStack(); nav.navigate(Rutas.tabla(g, t)) }
+        }
+        composable(Rutas.AJUSTES_IA) { co.planizaje.app.ia.PantallaAjustesIA(atras) }
         composable("croquis/{id}") { b -> PantallaCroquis(b.arguments!!.getString("id")!!, atras) }
         composable(Rutas.GRUAS) { PantallaGruas(nav, atras) }
         composable("grua/{id}") { b -> EditorGrua(nav, b.arguments!!.getString("id")!!, atras) }

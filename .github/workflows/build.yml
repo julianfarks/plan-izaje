@@ -81,7 +81,12 @@ jobs:
           arch: x86_64
           profile: pixel_4
           disable-animations: true
-          script: gradle :app:connectedDebugAndroidTest --no-daemon > salida-emulador.txt 2>&1 || (tail -c 20000 salida-emulador.txt; exit 1)
+          script: |
+            gradle :app:connectedDebugAndroidTest --no-daemon > salida-emulador.txt 2>&1 || (adb logcat -d -s OCR_PLANIZAJE:I > ocr.txt; tail -c 20000 salida-emulador.txt; exit 1)
+            adb logcat -d -s OCR_PLANIZAJE:I > ocr.txt
+      - name: Informe de lectura OCR de las placas reales
+        if: always()
+        run: grep -h "OCR_PLANIZAJE" ocr.txt 2>/dev/null | sed 's/.*OCR_PLANIZAJE[^:]*: //' | while IFS= read -r l; do echo "::notice title=ocr::$l"; done || true
       - name: Publicar errores como anotaciones
         if: failure()
         run: |

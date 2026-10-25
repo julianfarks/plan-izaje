@@ -46,19 +46,19 @@ object Motor {
         val c = p.carga
         val rCarga = when {
             c.pesoKg == null -> Resultado(
-                "peso_carga", G_CARGA, "Peso de la carga", EstadoDato.PENDIENTE,
+                "peso_carga", G_CARGA, "Peso de la carga", EstadoDato.PENDIENTE, campo = "carga.peso",
                 mensajes = listOf("Introduzca el peso de la carga o márquelo como pendiente de confirmar."), paso = Paso.CARGA,
             )
             !c.origenPeso.documentado -> Resultado(
                 "peso_carga", G_CARGA, "Peso de la carga", EstadoDato.REVISAR, Unidades.kgYt(c.pesoKg), c.pesoKg,
                 datos = listOf(Dato("Origen del dato", c.origenPeso.etiqueta)),
                 mensajes = listOf("El peso no está documentado (${c.origenPeso.etiqueta.lowercase()}). Confírmelo con placa, plano, certificado o báscula antes de ejecutar."),
-                paso = Paso.CARGA,
+                paso = Paso.CARGA, campo = "carga.origen",
             )
             c.referenciaPeso.isBlank() -> Resultado(
                 "peso_carga", G_CARGA, "Peso de la carga", EstadoDato.REVISAR, Unidades.kgYt(c.pesoKg), c.pesoKg,
                 datos = listOf(Dato("Origen del dato", c.origenPeso.etiqueta)),
-                mensajes = listOf("Indique la referencia del documento o ticket de báscula que respalda el peso."), paso = Paso.CARGA,
+                mensajes = listOf("Indique la referencia del documento o ticket de báscula que respalda el peso."), paso = Paso.CARGA, campo = "carga.referencia",
             )
             else -> Resultado(
                 "peso_carga", G_CARGA, "Peso de la carga", EstadoDato.DOCUMENTADO, Unidades.kgYt(c.pesoKg), c.pesoKg,
@@ -151,7 +151,7 @@ object Motor {
             res += Resultado(
                 "radio_${rf.fase.id}", G_GRUA, "Radio de trabajo · $nombre", estR, Unidades.m(rf.radio), rf.radio,
                 formula = if (rf.exacto) "Radio medido e introducido por el usuario" else "R = distancia en planta del eje de giro de la grúa al punto más alejado de la fase",
-                mensajes = listOf(rf.explicacion), paso = Paso.MANIOBRA,
+                mensajes = listOf(rf.explicacion), paso = Paso.MANIOBRA, campo = "fase.radio",
             )
             if (rf.radio != null) radioMax = maxOf(radioMax ?: 0.0, rf.radio)
             val u = evaluarCapacidad(i, rf, nombre, tabla, rTabla.estado, total, estTotal, p)
@@ -160,7 +160,7 @@ object Motor {
         }
 
         // 6. Aparejos -------------------------------------------------------
-        res += evaluarAparejos(p, usados, total, hoy)
+        res += evaluarAparejos(p, grua, usados, total, hoy)
 
         // 7. Entorno ----------------------------------------------------------
         res += evaluarApoyos(p, grua)
@@ -194,6 +194,17 @@ object Motor {
         val msg = mutableListOf<String>()
         var est = EstadoDato.DOCUMENTADO
         if (tabla.puntos.isEmpty()) { est = EstadoDato.NO_VERIFICABLE; msg += "La tabla no tiene valores de radio y capacidad." }
+        if (tabla.identificacionPendiente) {
+            est = EstadoDato.NO_VERIFICABLE
+            msg += "Tabla pendiente de identificación: no está confirmado que pertenezca a esta grúa y configuración. Se conserva como documento, pero no se usa como fuente validada."
+        }
+        if (tabla.tieneDudosos) {
+            est = EstadoDato.peor(est, EstadoDato.REVISAR)
+            msg += "${tabla.puntos.count { it.dudoso }} valor(es) leídos automáticamente están pendientes de verificar contra la foto."
+        }
+        if (tabla.origen == co.planizaje.core.model.OrigenTabla.IMPORTADA_OCR || tabla.origen == co.planizaje.core.model.OrigenTabla.IMPORTADA_IA) {
+            msg += "Tabla leída de una fotografía (${tabla.origen.etiqueta.lowercase()}): no es una tabla oficial validada hasta que una persona la contraste con el original."
+        }
         if (!tabla.fuente.completa) { est = EstadoDato.peor(est, EstadoDato.REVISAR); msg += "Falta identificar el documento y la página/figura de donde salen los valores." }
         if (!tabla.verificacion.valida) { est = EstadoDato.peor(est, EstadoDato.REVISAR); msg += "Nadie ha registrado la verificación de la tabla contra el diagrama original." }
         if (!grua.identificada) { est = EstadoDato.peor(est, EstadoDato.REVISAR); msg += "Identifique fabricante, modelo y nº de serie: una tabla no pertenece a una grúa solo porque el nombre comercial coincida." }
@@ -217,7 +228,7 @@ object Motor {
                 Dato("Método entre radios", tabla.interpolacion.etiqueta),
                 Dato("Verificada por", if (tabla.verificacion.valida) "${tabla.verificacion.porQuien} ${tabla.verificacion.fecha}" else "sin verificar"),
             ),
-            fuente = tabla.fuente.texto(), mensajes = msg, paso = Paso.GRUA,
+            fuente = tabla.fuente.texto(), mensajes = msg, paso = Paso.GRUA, campo = "tabla",
         )
     }
 
@@ -250,10 +261,11 @@ object Motor {
     ): Pair<List<Resultado>, Double?> {
         val out = mutableListOf<Resultado>()
         val idCap = "capacidad_${rf.fase.id}"
-        if (tabla == null || tabla.puntos.isEmpty()) {
+        if (tabla == null || tabla.puntos.isEmpty() || tabla.identificacionPendiente) {
             out += Resultado(
                 idCap, G_GRUA, "Capacidad nominal · $nombre", EstadoDato.NO_VERIFICABLE,
-                mensajes = listOf("Sin tabla de carga fiable no se puede determinar la capacidad."), paso = Paso.GRUA,
+                mensajes = listOf(if (tabla?.identificacionPendiente == true) "La tabla está pendiente de identificación: la capacidad no ha podido verificarse." else "Sin tabla de carga fiable no se puede determinar la capacidad."),
+                paso = Paso.GRUA, campo = "tabla",
             )
             return out to null
         }
@@ -328,7 +340,7 @@ object Motor {
         return out to u
     }
 
-    private fun evaluarAparejos(p: Proyecto, usados: List<Accesorio>, total: Double?, hoy: LocalDate): List<Resultado> {
+    private fun evaluarAparejos(p: Proyecto, grua: Grua?, usados: List<Accesorio>, total: Double?, hoy: LocalDate): List<Resultado> {
         val out = mutableListOf<Resultado>()
         val a = p.aparejo
         val eslingas = usados.filter { it.tipo.esEslinga && it.id in a.eslingaIds }
@@ -338,12 +350,12 @@ object Motor {
         if (!calc.ok) {
             out += Resultado(
                 "eslingas_tension", G_APAREJO, "Tensión en ramales", EstadoDato.PENDIENTE,
-                mensajes = listOf(calc.error ?: "Faltan datos"), paso = Paso.MANIOBRA,
+                mensajes = listOf(calc.error ?: "Faltan datos"), paso = Paso.MANIOBRA, campo = "aparejo",
             )
         } else {
             out += Resultado(
                 "eslingas_tension", G_APAREJO, "Tensión en ramales", EstadoDato.peor(
-                    if (a.ramales > 1 && a.metodoAngulo == co.planizaje.core.model.MetodoAngulo.ANGULO_DIRECTO) EstadoDato.REVISAR else EstadoDato.DOCUMENTADO,
+                    if (a.ramales > 1 && a.metodoAngulo == co.planizaje.core.model.MetodoAngulo.ANGULO_DIRECTO && !a.anguloEsMaximo) EstadoDato.REVISAR else EstadoDato.DOCUMENTADO,
                     if (total == null) EstadoDato.PENDIENTE else EstadoDato.DOCUMENTADO,
                 ),
                 Unidades.kg(calc.tensionRamal), calc.tensionRamal,
@@ -356,8 +368,8 @@ object Motor {
                     Dato("Enganche", a.enganche.etiqueta),
                     Dato("Carga por eslinga", Unidades.kg(calc.cargaPorEslinga)),
                 ),
-                hipotesis = calc.hipotesis,
-                mensajes = calc.avisos + if (a.ramales > 1 && a.metodoAngulo == co.planizaje.core.model.MetodoAngulo.ANGULO_DIRECTO)
+                hipotesis = calc.hipotesis + if (a.anguloEsMaximo && a.ramales > 1) listOf("Se planifica con un ángulo MÁXIMO de ${fmt(a.anguloVertical, 0)}° respecto a la vertical: en campo no debe superarse.") else emptyList(),
+                mensajes = calc.avisos + if (a.ramales > 1 && a.metodoAngulo == co.planizaje.core.model.MetodoAngulo.ANGULO_DIRECTO && !a.anguloEsMaximo)
                     listOf("Ángulo introducido directamente: confírmelo midiendo longitud de eslinga y separación de puntos.") else emptyList(),
                 paso = Paso.MANIOBRA,
             )
@@ -377,10 +389,15 @@ object Motor {
         }
         // Puntos de izaje de la carga
         val wllP = p.carga.wllPuntoIzajeKg
+        val exigePuntos = p.maniobra.comprobarPuntosIzaje ?: (grua?.tipo != co.planizaje.core.model.TipoGrua.ARTICULADA)
         if (calc.ok && calc.tensionRamal != null) {
-            out += if (wllP == null) Resultado(
+            out += if (wllP == null && !exigePuntos) Resultado(
+                "puntos_izaje", G_APAREJO, "Puntos de izaje de la carga", EstadoDato.REVISAR,
+                mensajes = listOf("Comprobación detallada no activada. Revise en campo que los puntos de izaje (orejas, cáncamos) estén en buen estado y sean adecuados. Actívela en «Comprobaciones adicionales» si la carga tiene puntos de izaje con capacidad documentada o dudosa."),
+                paso = Paso.MANIOBRA, bloqueante = false, campo = "comprobaciones",
+            ) else if (wllP == null) Resultado(
                 "puntos_izaje", G_APAREJO, "Puntos de izaje de la carga", EstadoDato.PENDIENTE,
-                mensajes = listOf("Registre la capacidad (WLL) documentada de los puntos de izaje de la carga, o indique que se izará con abrazo/canasta."), paso = Paso.CARGA,
+                mensajes = listOf("Registre la capacidad (WLL) documentada de los puntos de izaje de la carga, o indique que se izará con abrazo/canasta."), paso = Paso.CARGA, campo = "carga.wllPuntos",
             ) else Resultado(
                 "puntos_izaje", G_APAREJO, "Puntos de izaje de la carga", EstadoDato.DOCUMENTADO,
                 "${Unidades.kg(calc.tensionRamal)} / WLL ${Unidades.kg(wllP)}", calc.tensionRamal,
@@ -433,6 +450,16 @@ object Motor {
         val est = grua?.estabilizadores?.firstOrNull { it.id == p.maniobra.estabilizadoresId }
         val m = p.maniobra
         val f = est?.fuerzaMaxApoyoKn
+        val exige = m.comprobarTerreno ?: (grua?.tipo != co.planizaje.core.model.TipoGrua.ARTICULADA)
+        val sinDatos = est == null || f == null || m.placaAncho == null || m.placaLargo == null
+        if (!exige && sinDatos) return Resultado(
+            "apoyos", G_ENTORNO, "Presión sobre el terreno", EstadoDato.REVISAR, "No activada",
+            mensajes = listOf(
+                "Comprobación de terreno no activada para esta grúa articulada. Antes de izar, compruebe en campo el terreno, despliegue los estabilizadores según el manual y use placas de reparto.",
+                "Actívela en «Comprobaciones adicionales» si hay relleno, terreno blando, losas, sótanos, tapas o bordes de excavación bajo los apoyos.",
+            ),
+            paso = Paso.MANIOBRA, bloqueante = false, campo = "comprobaciones",
+        )
         if (est == null || f == null) return Resultado(
             "apoyos", G_ENTORNO, "Presión sobre el terreno", EstadoDato.NO_VERIFICABLE,
             mensajes = listOf("Para calcular la presión se necesita la fuerza máxima por apoyo documentada por el fabricante para la configuración de estabilizadores. Sin ese dato no se calcula."),
@@ -559,29 +586,29 @@ object Motor {
     // ------------------------------------------------------------------ completitud
 
     fun faltantes(p: Proyecto, grua: Grua?, tabla: TablaCarga?): List<Faltante> = buildList {
-        if (p.nombre.isBlank()) add(Faltante(Paso.INFO, "Nombre del proyecto"))
-        if (p.ubicacion.isBlank()) add(Faltante(Paso.INFO, "Ubicación de la obra"))
-        if (p.fecha.isBlank()) add(Faltante(Paso.INFO, "Fecha de la maniobra"))
-        if (p.elaboradoPor.isBlank()) add(Faltante(Paso.INFO, "Responsable de elaboración"))
-        if (p.descripcion.isBlank()) add(Faltante(Paso.INFO, "Descripción del trabajo"))
-        if (grua == null) add(Faltante(Paso.GRUA, "Seleccionar la grúa"))
-        else if (tabla == null) add(Faltante(Paso.GRUA, "Seleccionar la tabla de carga aplicable"))
-        if (p.carga.descripcion.isBlank()) add(Faltante(Paso.CARGA, "Descripción de la carga"))
-        if (p.carga.pesoKg == null) add(Faltante(Paso.CARGA, "Peso de la carga"))
+        if (p.nombre.isBlank()) add(Faltante(Paso.INFO, "Nombre del proyecto", "nombre"))
+        if (p.ubicacion.isBlank()) add(Faltante(Paso.INFO, "Ubicación de la obra", "ubicacion"))
+        if (p.fecha.isBlank()) add(Faltante(Paso.INFO, "Fecha de la maniobra", "fecha"))
+        if (p.elaboradoPor.isBlank()) add(Faltante(Paso.INFO, "Responsable de elaboración", "elaboradoPor"))
+        if (p.descripcion.isBlank()) add(Faltante(Paso.INFO, "Descripción del trabajo", "descripcion"))
+        if (grua == null) add(Faltante(Paso.GRUA, "Seleccionar la grúa", "grua"))
+        else if (tabla == null) add(Faltante(Paso.GRUA, "Seleccionar la tabla de carga aplicable", "tabla"))
+        if (p.carga.descripcion.isBlank()) add(Faltante(Paso.CARGA, "Descripción de la carga", "carga.descripcion"))
+        if (p.carga.pesoKg == null) add(Faltante(Paso.CARGA, "Peso de la carga", "carga.peso"))
         val cr = p.croquis
         if (cr.grua == null) add(Faltante(Paso.CROQUIS, "Colocar la grúa en el croquis"))
         if (cr.elementos.none { it.tipo == TipoElemento.RECOGIDA }) add(Faltante(Paso.CROQUIS, "Marcar el punto de recogida"))
         if (cr.elementos.none { it.tipo == TipoElemento.DESCARGA }) add(Faltante(Paso.CROQUIS, "Marcar el punto de descarga"))
-        if (p.maniobra.fases.isEmpty()) add(Faltante(Paso.MANIOBRA, "Crear al menos una fase de la maniobra"))
+        if (p.maniobra.fases.isEmpty()) add(Faltante(Paso.MANIOBRA, "Crear al menos una fase de la maniobra", "fase.nueva"))
         p.maniobra.fases.forEachIndexed { i, f ->
             if (f.origenId == null || f.destinoId == null) add(Faltante(Paso.MANIOBRA, "Fase ${i + 1}: asignar recogida y descarga"))
         }
-        if (p.aparejo.todosIds.isEmpty()) add(Faltante(Paso.MANIOBRA, "Seleccionar los aparejos"))
+        if (p.aparejo.todosIds.isEmpty()) add(Faltante(Paso.MANIOBRA, "Seleccionar los aparejos", "aparejo"))
         val pr = p.procedimiento
-        if (pr.operador.isBlank()) add(Faltante(Paso.MANIOBRA, "Nombre del operador"))
-        if (pr.senalero.isBlank()) add(Faltante(Paso.MANIOBRA, "Nombre del señalero / aparejador"))
-        if (pr.comunicacion.isBlank()) add(Faltante(Paso.MANIOBRA, "Método de comunicación operador–señalero"))
-        if (pr.secuencia.isBlank()) add(Faltante(Paso.MANIOBRA, "Secuencia de la maniobra"))
+        if (pr.operador.isBlank()) add(Faltante(Paso.MANIOBRA, "Nombre del operador", "operador"))
+        if (pr.senalero.isBlank()) add(Faltante(Paso.MANIOBRA, "Nombre del señalero / aparejador", "senalero"))
+        if (pr.comunicacion.isBlank()) add(Faltante(Paso.MANIOBRA, "Método de comunicación operador–señalero", "comunicacion"))
+        if (pr.secuencia.isBlank()) add(Faltante(Paso.MANIOBRA, "Secuencia de la maniobra", "secuencia"))
     }
 
     fun estadoDocumento(p: Proyecto, res: List<Resultado>, falt: List<Faltante>, huellaActual: String? = null): EstadoDocumento {

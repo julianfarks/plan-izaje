@@ -44,12 +44,14 @@ data class Resultado(
      * Un NO_CUMPLE o un dato PENDIENTE siempre bloquean.
      */
     val bloqueante: Boolean = true,
+    /** Campo del formulario donde se corrige (para llevar al usuario directamente). */
+    val campo: String? = null,
 ) {
     val bloquea: Boolean get() = veredicto == Veredicto.NO_CUMPLE || estado == EstadoDato.PENDIENTE || estado == EstadoDato.NO_VERIFICABLE ||
         (bloqueante && estado != EstadoDato.DOCUMENTADO)
 }
 
-data class Faltante(val paso: Paso, val texto: String)
+data class Faltante(val paso: Paso, val texto: String, val campo: String? = null)
 
 enum class EstadoDocumento(val etiqueta: String, val marcaAgua: String?) {
     BORRADOR_NO_CUMPLE("BORRADOR — UNA VERIFICACIÓN EXCEDE LÍMITES", "BORRADOR · NO EJECUTAR"),

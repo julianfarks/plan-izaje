@@ -2,6 +2,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
+    <!-- Micrófono: solo se pide al pulsar «Hablar del izaje». -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Internet: solo para el servicio de IA opcional y el reconocimiento de voz en línea del teléfono. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
 
     <application
         android:name=".PlanIzajeApp"

@@ -53,6 +53,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -71,6 +73,29 @@ import co.planizaje.core.util.Unidades
 import java.time.LocalDate
 
 val LocalAlmacen = staticCompositionLocalOf<Almacen> { error("Almacen no disponible") }
+
+/** Campo al que el asistente quiere llevar al usuario. */
+class Objetivo { var clave by mutableStateOf<String?>(null) }
+val LocalObjetivo = staticCompositionLocalOf { Objetivo() }
+
+/** Marca un campo con una clave: si el asistente la pide, se desplaza hasta él y le da el foco. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun Modifier.objetivo(clave: String?): Modifier {
+    if (clave == null) return this
+    val obj = LocalObjetivo.current
+    val traer = remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
+    val foco = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(obj.clave) {
+        if (obj.clave == clave) {
+            kotlinx.coroutines.delay(300)
+            runCatching { traer.bringIntoView() }
+            runCatching { foco.requestFocus() }
+            obj.clave = null
+        }
+    }
+    return this.bringIntoViewRequester(traer).focusRequester(foco)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,6 +131,7 @@ fun CampoTexto(
     multilinea: Boolean = false,
     teclado: KeyboardType = KeyboardType.Text,
     marcador: String? = null,
+    clave: String? = null,
 ) {
     val falta = obligatorio && valor.isBlank()
     OutlinedTextField(
@@ -125,7 +151,7 @@ fun CampoTexto(
             keyboardType = teclado,
             imeAction = if (multilinea) ImeAction.Default else ImeAction.Next,
         ),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().objetivo(clave),
     )
 }
 
@@ -145,6 +171,7 @@ fun CampoNumero(
     min: Double? = 0.0,
     max: Double? = null,
     entero: Boolean = false,
+    clave: String? = null,
 ) {
     var texto by remember { mutableStateOf(Unidades.fmtEditable(valor)) }
     LaunchedEffect(valor) {
@@ -173,7 +200,7 @@ fun CampoNumero(
         supportingText = (error ?: ayuda)?.let { { Text(it) } },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = if (entero) KeyboardType.Number else KeyboardType.Decimal, imeAction = ImeAction.Next),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().objetivo(clave),
     )
 }
 
@@ -185,7 +212,7 @@ fun CampoEntero(valor: Int?, onCambio: (Int?) -> Unit, etiqueta: String, modifie
 /** Peso con selector kg / t. Siempre se guarda en kg. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CampoPeso(valorKg: Double?, onCambio: (Double?) -> Unit, etiqueta: String, ayuda: String? = null, obligatorio: Boolean = false) {
+fun CampoPeso(valorKg: Double?, onCambio: (Double?) -> Unit, etiqueta: String, ayuda: String? = null, obligatorio: Boolean = false, clave: String? = null) {
     var unidad by rememberSaveable { mutableStateOf(UnidadPeso.KG) }
     Column {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -205,7 +232,7 @@ fun CampoPeso(valorKg: Double?, onCambio: (Double?) -> Unit, etiqueta: String, a
             CampoNumero(
                 valor = valorKg?.let { Unidades.desdeKg(it, unidad) },
                 onCambio = { v -> onCambio(v?.let { Unidades.aKg(it, unidad) }) },
-                etiqueta = etiqueta, unidad = unidad.simbolo, obligatorio = obligatorio,
+                etiqueta = etiqueta, unidad = unidad.simbolo, obligatorio = obligatorio, clave = clave,
                 ayuda = (ayuda?.let { "$it · " } ?: "") + if (valorKg != null) "Equivale a ${Unidades.kgYt(valorKg)}" else "",
             )
         }
@@ -213,7 +240,7 @@ fun CampoPeso(valorKg: Double?, onCambio: (Double?) -> Unit, etiqueta: String, a
 }
 
 @Composable
-fun CampoFecha(valor: String, onCambio: (String) -> Unit, etiqueta: String, obligatorio: Boolean = false) {
+fun CampoFecha(valor: String, onCambio: (String) -> Unit, etiqueta: String, obligatorio: Boolean = false, clave: String? = null) {
     val ctx = LocalContext.current
     val valida = valor.isBlank() || runCatching { LocalDate.parse(valor) }.isSuccess
     OutlinedTextField(
@@ -229,7 +256,7 @@ fun CampoFecha(valor: String, onCambio: (String) -> Unit, etiqueta: String, obli
                 DatePickerDialog(ctx, { _, y, m, day -> onCambio(LocalDate.of(y, m + 1, day).toString()) }, d.year, d.monthValue - 1, d.dayOfMonth).show()
             }) { Icon(Icons.Filled.CalendarMonth, "Elegir fecha") }
         },
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().objetivo(clave),
     )
 }
 
@@ -335,9 +362,10 @@ fun <T> Selector(
     onSeleccion: (T) -> Unit,
     modifier: Modifier = Modifier,
     vacio: String = "Seleccionar…",
+    clave: String? = null,
 ) {
     var abierto by remember { mutableStateOf(false) }
-    Column(modifier.fillMaxWidth()) {
+    Column(modifier.fillMaxWidth().objetivo(clave)) {
         Text(etiqueta, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Box {
             OutlinedButton(onClick = { abierto = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(10.dp)) {

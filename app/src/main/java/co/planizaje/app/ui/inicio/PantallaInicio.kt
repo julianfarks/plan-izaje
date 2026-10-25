@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -88,6 +90,10 @@ fun PantallaInicio(nav: NavController) {
                                     text = { Text("Copias de seguridad") }, leadingIcon = { Icon(Icons.Filled.Backup, null) },
                                     onClick = { menu = false; nav.navigate(Rutas.COPIAS) },
                                 )
+                                DropdownMenuItem(
+                                    text = { Text("Servicio de IA (opcional)") }, leadingIcon = { Icon(Icons.Filled.AutoAwesome, null) },
+                                    onClick = { menu = false; nav.navigate(Rutas.AJUSTES_IA) },
+                                )
                             }
                         }
                     }
@@ -107,6 +113,11 @@ fun PantallaInicio(nav: NavController) {
                     val p = almacen.crearProyecto()
                     nav.navigate(Rutas.asistente(p.id, 0))
                 }
+                androidx.compose.material3.FilledTonalButton(
+                    onClick = { val p = almacen.crearProyecto(); nav.navigate(Rutas.asistente(p.id, 0, voz = true)) },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(containerColor = Paleta.AmbarClaro, contentColor = Paleta.Azul),
+                ) { Icon(Icons.Filled.Mic, null); Text("  Hablar del izaje: crear el plan explicándolo", fontWeight = FontWeight.SemiBold) }
                 OpcionInicio(
                     Icons.Filled.History, "Continuar un proyecto",
                     if (ultimo != null) "Seguir con «${ultimo.titulo}» donde lo dejaste." else "Aún no hay proyectos empezados.",

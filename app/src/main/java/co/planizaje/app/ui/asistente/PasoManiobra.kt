@@ -49,6 +49,7 @@ import co.planizaje.app.ui.comp.CampoTexto
 import co.planizaje.app.ui.comp.FilaDato
 import co.planizaje.app.ui.comp.Seccion
 import co.planizaje.app.ui.comp.Selector
+import co.planizaje.app.ui.comp.objetivo
 import co.planizaje.app.ui.theme.Paleta
 import co.planizaje.core.calc.Aptitud
 import co.planizaje.core.calc.CalculoEslingas
@@ -72,6 +73,7 @@ fun PasoManiobra(c: Ctx) {
     Ayuda("Define las fases del movimiento, los aparejos y el procedimiento. Cada sección se puede completar por separado.")
     SeccionFases(c)
     SeccionAparejo(c)
+    SeccionComprobaciones(c)
     SeccionCriterios(c)
     SeccionProcedimiento(c)
 }
@@ -83,6 +85,9 @@ private fun SeccionFases(c: Ctx) {
     fun upd(desc: String, f: (List<Fase>) -> List<Fase>) = c.actualizar(desc) { it.copy(maniobra = it.maniobra.copy(fases = f(it.maniobra.fases))) }
 
     Seccion("Fases del izaje", icono = Icons.Filled.Route, subtitulo = "Recogida → descarga, con radio y altura") {
+        CampoTexto(c.p.maniobra.notasEmplazamiento, { v -> c.actualizar("Notas del emplazamiento") { it.copy(maniobra = it.maniobra.copy(notasEmplazamiento = v)) } },
+            "Notas del emplazamiento", multilinea = true, clave = "maniobra.emplazamiento",
+            ayuda = "Posición de la grúa, estabilizadores, distancias de referencia… (también se llena con la voz)")
         if (puntos.isEmpty()) Aviso("Primero marca en el croquis los puntos de recogida y descarga.")
         c.p.maniobra.fases.forEachIndexed { i, f ->
             val rf = Motor.radioFase(f, cr)
@@ -100,7 +105,7 @@ private fun SeccionFases(c: Ctx) {
                     if (rf.radio != null && !rf.exacto) FilaDato("Radio aproximado del croquis", "≈ ${Unidades.m(rf.radio)}")
                     CampoNumero(
                         f.radioMedido, { v -> upd("Radio medido") { l -> l.map { if (it.id == f.id) it.copy(radioMedido = v) else it } } },
-                        "Radio verificado en campo", "m",
+                        "Radio verificado en campo", "m", clave = if (i == 0) "fase.radio" else null,
                         ayuda = "Distancia horizontal del eje de giro al gancho en el punto más alejado. Si lo dejas vacío se usa el del croquis (requiere revisión).",
                     )
                     CampoNumero(
@@ -117,7 +122,7 @@ private fun SeccionFases(c: Ctx) {
                 }
             }
         }
-        OutlinedButton(onClick = {
+        OutlinedButton(modifier = Modifier.objetivo("fase.nueva"), onClick = {
             val r = cr.elementos.firstOrNull { it.tipo == TipoElemento.RECOGIDA }
             val d = cr.elementos.firstOrNull { it.tipo == TipoElemento.DESCARGA }
             upd("Fase añadida") { it + Fase(nuevoId(), "", r?.id, d?.id) }
@@ -134,20 +139,31 @@ private fun SeccionAparejo(c: Ctx) {
     val calc = CalculoEslingas.calcular(a, c.ev.masaTotal ?: c.p.carga.pesoKg, if (c.p.carga.cdgConocido) c.p.carga.cdgX else null)
 
     Seccion("Aparejos", icono = Icons.Filled.Link, subtitulo = "Configuración de eslingado y accesorios") {
+        if (a.notas.isNotBlank()) Aviso("Indicado: ${a.notas.take(200)}", Paleta.Pendiente, Paleta.PendienteFondo, "i")
         Text("Número de ramales", style = MaterialTheme.typography.labelLarge)
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             (1..4).forEach { n ->
                 SegmentedButton(a.ramales == n, { upd("Aparejo") { it.copy(ramales = n) } }, SegmentedButtonDefaults.itemShape(n - 1, 4)) { Text("$n") }
             }
         }
-        Selector("Tipo de enganche", Enganche.entries, a.enganche, { it.etiqueta }, { e -> upd("Aparejo") { it.copy(enganche = e) } })
+        Selector("Tipo de enganche", Enganche.entries, a.enganche, { it.etiqueta }, { e -> upd("Aparejo") { it.copy(enganche = e) } }, clave = "aparejo")
         if (a.ramales > 1) {
             Text("Ángulo de los ramales", style = MaterialTheme.typography.labelLarge)
+            val simple = a.metodoAngulo == MetodoAngulo.ANGULO_DIRECTO && (a.anguloEsMaximo || a.anguloVertical == null)
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                SegmentedButton(a.metodoAngulo == MetodoAngulo.GEOMETRIA, { upd("Aparejo") { it.copy(metodoAngulo = MetodoAngulo.GEOMETRIA) } }, SegmentedButtonDefaults.itemShape(0, 2)) { Text("Por medidas") }
-                SegmentedButton(a.metodoAngulo == MetodoAngulo.ANGULO_DIRECTO, { upd("Aparejo") { it.copy(metodoAngulo = MetodoAngulo.ANGULO_DIRECTO) } }, SegmentedButtonDefaults.itemShape(1, 2)) { Text("Ángulo directo") }
+                SegmentedButton(simple, { upd("Aparejo") { it.copy(metodoAngulo = MetodoAngulo.ANGULO_DIRECTO, anguloEsMaximo = true, anguloVertical = it.anguloVertical?.takeIf { v -> v == 45.0 || v == 60.0 } ?: 45.0) } }, SegmentedButtonDefaults.itemShape(0, 3)) { Text("Máximo") }
+                SegmentedButton(a.metodoAngulo == MetodoAngulo.GEOMETRIA, { upd("Aparejo") { it.copy(metodoAngulo = MetodoAngulo.GEOMETRIA, anguloEsMaximo = false) } }, SegmentedButtonDefaults.itemShape(1, 3)) { Text("Por medidas") }
+                SegmentedButton(a.metodoAngulo == MetodoAngulo.ANGULO_DIRECTO && !simple, { upd("Aparejo") { it.copy(metodoAngulo = MetodoAngulo.ANGULO_DIRECTO, anguloEsMaximo = false) } }, SegmentedButtonDefaults.itemShape(2, 3)) { Text("Exacto") }
             }
-            if (a.metodoAngulo == MetodoAngulo.GEOMETRIA) {
+            if (simple) {
+                Text("¿Cuánto se abrirán como máximo los ramales respecto a la vertical?", style = MaterialTheme.typography.bodyMedium)
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    listOf(30.0, 45.0, 60.0).forEachIndexed { i, ang ->
+                        SegmentedButton(a.anguloVertical == ang, { upd("Aparejo") { it.copy(anguloVertical = ang, anguloEsMaximo = true) } }, SegmentedButtonDefaults.itemShape(i, 3)) { Text("≤ ${ang.toInt()}°") }
+                    }
+                }
+                Ayuda("Forma sencilla para grúas articuladas: se calcula con el ángulo máximo que elijas (más conservador) y el plan indica que en campo no debe superarse.")
+            } else if (a.metodoAngulo == MetodoAngulo.GEOMETRIA) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CampoNumero(a.longitudRamal, { v -> upd("Aparejo") { it.copy(longitudRamal = v) } }, "Largo de cada ramal", "m", Modifier.weight(1f))
                     CampoNumero(a.separacionPuntos, { v -> upd("Aparejo") { it.copy(separacionPuntos = v) } }, "Separación puntos", "m", Modifier.weight(1f))
@@ -225,6 +241,27 @@ private fun ListaCandidatos(titulo: String, lista: List<co.planizaje.core.calc.C
 }
 
 @Composable
+private fun SeccionComprobaciones(c: Ctx) {
+    val m = c.p.maniobra
+    val articulada = c.grua?.tipo == co.planizaje.core.model.TipoGrua.ARTICULADA
+    fun upd(desc: String, f: (co.planizaje.core.model.Maniobra) -> co.planizaje.core.model.Maniobra) = c.actualizar(desc) { it.copy(maniobra = f(it.maniobra)) }
+    val terreno = m.comprobarTerreno ?: !articulada
+    val puntos = m.comprobarPuntosIzaje ?: !articulada
+    Seccion("Comprobaciones adicionales", icono = Icons.Filled.Rule, desplegable = true, inicialAbierta = !articulada || terreno || puntos,
+        subtitulo = if (articulada) "Solo cuando el trabajo lo requiere" else "Recomendadas para esta grúa", modifier = Modifier.objetivo("comprobaciones")) {
+        if (articulada) Ayuda("En grúas articuladas estas comprobaciones no son obligatorias en todas las maniobras. Actívalas cuando se cumpla alguna de las condiciones indicadas; la app pedirá solo los datos necesarios.")
+        co.planizaje.app.ui.comp.FilaInterruptor(
+            "Presión sobre el terreno", terreno, { b -> upd("Comprobación de terreno") { it.copy(comprobarTerreno = b) } },
+            "Actívala si bajo los apoyos hay relleno, tierra blanda, losas, sótanos, tapas, bordes de excavación, o si la carga está cerca del límite. Necesita la fuerza máxima por apoyo del manual, la placa de reparto y la presión admisible del terreno (en «Criterios y apoyos»).",
+        )
+        co.planizaje.app.ui.comp.FilaInterruptor(
+            "Capacidad de los puntos de izaje de la carga", puntos, { b -> upd("Comprobación de puntos de izaje") { it.copy(comprobarPuntosIzaje = b) } },
+            "Actívala si la carga tiene orejas o cáncamos con capacidad documentada, o si hay dudas sobre ellos. Necesita el WLL del punto (paso Carga).",
+        )
+    }
+}
+
+@Composable
 private fun SeccionCriterios(c: Ctx) {
     val m = c.p.maniobra
     fun upd(desc: String, f: (co.planizaje.core.model.Maniobra) -> co.planizaje.core.model.Maniobra) = c.actualizar(desc) { it.copy(maniobra = f(it.maniobra)) }
@@ -250,20 +287,20 @@ private fun SeccionProcedimiento(c: Ctx) {
     var nuevoItem by remember { mutableStateOf("") }
 
     Seccion("Responsables y comunicación", icono = Icons.Filled.Groups) {
-        CampoTexto(pr.operador, { v -> upd("Responsables") { it.copy(operador = v) } }, "Operador de la grúa", obligatorio = true)
-        CampoTexto(pr.senalero, { v -> upd("Responsables") { it.copy(senalero = v) } }, "Señalero / rigger", obligatorio = true)
+        CampoTexto(pr.operador, { v -> upd("Responsables") { it.copy(operador = v) } }, "Operador de la grúa", obligatorio = true, clave = "operador")
+        CampoTexto(pr.senalero, { v -> upd("Responsables") { it.copy(senalero = v) } }, "Señalero / rigger", obligatorio = true, clave = "senalero")
         CampoTexto(pr.aparejador, { v -> upd("Responsables") { it.copy(aparejador = v) } }, "Aparejador")
         CampoTexto(pr.supervisor, { v -> upd("Responsables") { it.copy(supervisor = v) } }, "Supervisor / coordinador")
         CampoTexto(pr.otrosResponsables, { v -> upd("Responsables") { it.copy(otrosResponsables = v) } }, "Otros (auxiliar de tráfico, vigía…)", multilinea = true)
-        CampoTexto(pr.comunicacion, { v -> upd("Comunicación") { it.copy(comunicacion = v) } }, "Comunicación operador–señalero", obligatorio = true,
+        CampoTexto(pr.comunicacion, { v -> upd("Comunicación") { it.copy(comunicacion = v) } }, "Comunicación operador–señalero", obligatorio = true, clave = "comunicacion",
             marcador = "Ej. Radio canal 3 + señales manuales normalizadas", multilinea = true)
     }
 
-    Seccion("Secuencia y área de trabajo", icono = Icons.Filled.Route, desplegable = true, inicialAbierta = pr.secuencia.isBlank()) {
+    Seccion("Secuencia y área de trabajo", icono = Icons.Filled.Route, desplegable = true, inicialAbierta = true) {
         OutlinedButton(onClick = { upd("Secuencia") { it.copy(secuencia = Plantillas.secuenciaDesdeFases(c.p.maniobra.fases, c.p.croquis)) } }, enabled = c.p.maniobra.fases.isNotEmpty()) {
             Text("Generar secuencia desde las fases")
         }
-        CampoTexto(pr.secuencia, { v -> upd("Secuencia") { it.copy(secuencia = v) } }, "Secuencia de la maniobra", obligatorio = true, multilinea = true)
+        CampoTexto(pr.secuencia, { v -> upd("Secuencia") { it.copy(secuencia = v) } }, "Secuencia de la maniobra", obligatorio = true, multilinea = true, clave = "secuencia")
         CampoTexto(pr.senalizacion, { v -> upd("Señalización") { it.copy(senalizacion = v) } }, "Señalización", multilinea = true, marcador = "Conos, cinta, avisos…")
         CampoTexto(pr.delimitacion, { v -> upd("Delimitación") { it.copy(delimitacion = v) } }, "Delimitación del área", multilinea = true)
         CampoTexto(pr.meteorologia, { v -> upd("Meteorología") { it.copy(meteorologia = v) } }, "Condiciones meteorológicas aplicables", multilinea = true,

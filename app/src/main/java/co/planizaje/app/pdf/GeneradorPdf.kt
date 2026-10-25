@@ -120,6 +120,13 @@ class GeneradorPdf(private val almacen: Almacen, private val versionApp: String)
                 bloq.forEach { r -> e.vineta("${r.estado.simbolo} ${r.titulo}: ${r.estado.etiqueta}${r.veredicto?.let { " · ${it.etiqueta}" } ?: ""}" + (r.mensajes.firstOrNull()?.let { " — $it" } ?: "")) }
             }
         }
+        if (p.pendientes.isNotEmpty()) {
+            e.subtitulo("Datos aproximados o pendientes de confirmar")
+            e.parrafo("Aportados por voz/texto o IA y aún no confirmados por el usuario. No deben tomarse como datos verificados.", 8.5f, GRIS)
+            e.tabla(listOf(0.30f, 0.40f, 0.30f), listOf("Dato", "Valor indicado", "Observación"),
+                p.pendientes.map { listOf("≈ ${it.etiqueta}", it.valor, it.nota.ifBlank { "Pendiente de confirmar" }) })
+        }
+        if (p.maniobra.notasEmplazamiento.isNotBlank()) { e.subtitulo("Notas del emplazamiento"); e.parrafo(p.maniobra.notasEmplazamiento) }
         if (p.advertencias.isNotBlank()) { e.subtitulo("Advertencias del proyecto"); e.parrafo(p.advertencias) }
 
         // B. Carga ------------------------------------------------------------
@@ -262,8 +269,12 @@ class GeneradorPdf(private val almacen: Almacen, private val versionApp: String)
                 "Método entre radios" to tabla.interpolacion.etiqueta,
                 "Descuenta gancho" to when (tabla.descuentaGancho) { true -> "Sí"; false -> "No"; null -> "No confirmado" },
                 "Notas" to tabla.notas,
+                "Origen de los valores" to tabla.origen.etiqueta + if (tabla.fechaImportacion > 0) " (${SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("es-CO")).format(Date(tabla.fechaImportacion))})" else "",
+                "Modelo leído en el documento" to tabla.modeloDetectado,
+                "Identificación" to if (tabla.identificacionPendiente) "PENDIENTE: no confirmada para esta grúa; no usada en cálculos" else "Confirmada por el usuario",
+                "Correcciones manuales" to tabla.correcciones.joinToString("; "),
             ))
-            e.tabla(listOf(0.33f, 0.33f, 0.34f), listOf("Radio", "Capacidad nominal", "Altura máx."), tabla.ordenados.map { listOf(Unidades.m(it.radio), Unidades.kg(it.capacidad), it.alturaMax?.let { h -> Unidades.m(h) } ?: "—") })
+            e.tabla(listOf(0.30f, 0.30f, 0.20f, 0.20f), listOf("Radio", "Capacidad nominal", "Altura máx.", "Lectura"), tabla.ordenados.map { listOf(Unidades.m(it.radio), Unidades.kg(it.capacidad), it.alturaMax?.let { h -> Unidades.m(h) } ?: "—", if (it.dudoso) "! pendiente de verificar" else "—") })
         } else e.parrafo("Sin tabla de carga: la capacidad de la grúa no es verificable.", color = ROJO)
 
         e.subtitulo("G.2 Memoria de cálculo")

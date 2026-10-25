@@ -268,6 +268,23 @@ class Almacen(private val ctx: Context) {
         Adjunto(id, nombre, archivo, mime, descripcion, System.currentTimeMillis())
     }.getOrNull()
 
+    /** Guarda una imagen generada por la app (p. ej. tabla recortada) como adjunto. */
+    fun guardarImagen(b: android.graphics.Bitmap, nombre: String, descripcion: String = ""): Adjunto {
+        val id = nuevoId()
+        val f = File(dirAdjuntos, "$id.jpg")
+        f.outputStream().use { b.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, it) }
+        return Adjunto(id, nombre, f.name, "image/jpeg", descripcion, System.currentTimeMillis())
+    }
+
+    /** Copia un archivo temporal (p. ej. PDF del fabricante) a los adjuntos. */
+    fun guardarArchivo(origen: File, nombre: String, mime: String, descripcion: String = ""): Adjunto {
+        val id = nuevoId()
+        val ext = origen.extension.ifBlank { "bin" }
+        val f = File(dirAdjuntos, "$id.$ext")
+        origen.copyTo(f, overwrite = true)
+        return Adjunto(id, nombre, f.name, mime, descripcion, System.currentTimeMillis())
+    }
+
     /** Archivo vacío para que la cámara guarde una foto; devuelve el adjunto ya registrado. */
     fun nuevaFoto(): Pair<Adjunto, File> {
         val id = nuevoId()

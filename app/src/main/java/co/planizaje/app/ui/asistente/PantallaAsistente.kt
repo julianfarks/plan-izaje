@@ -28,6 +28,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -75,6 +77,9 @@ class Ctx(
     val nav: NavController,
     val actualizar: (cambio: String?, f: (Proyecto) -> Proyecto) -> Unit,
     val irAPaso: (Paso) -> Unit,
+    /** Lleva al paso y al campo concreto (clave de enfoque). */
+    val irACampo: (Paso, String?) -> Unit = { p, _ -> irAPaso(p) },
+    val abrirVoz: (co.planizaje.core.ia.Ambito) -> Unit = {},
 )
 
 enum class EstadoPaso { SIN_VER, ATENCION, COMPLETO }
@@ -89,7 +94,7 @@ fun estadoPaso(paso: Paso, p: Proyecto, ev: Evaluacion): EstadoPaso {
 }
 
 @Composable
-fun PantallaAsistente(nav: NavController, id: String, pasoInicial: Int, onAtras: () -> Unit) {
+fun PantallaAsistente(nav: NavController, id: String, pasoInicial: Int, onAtras: () -> Unit, vozAlAbrir: Boolean = false) {
     val almacen = LocalAlmacen.current
     val proyectos by almacen.proyectos.collectAsState()
     val gruas by almacen.gruas.collectAsState()
@@ -118,7 +123,13 @@ fun PantallaAsistente(nav: NavController, id: String, pasoInicial: Int, onAtras:
     LaunchedEffect(paso) {
         if (paso !in p.pasosVistos) almacen.actualizarProyecto(id) { it.copy(pasosVistos = it.pasosVistos + paso) }
     }
-    val ctx = Ctx(p, grua, gruas, accesorios, ev, nav, { c, f -> almacen.actualizarProyecto(id, c, f) }, { indice = it.ordinal })
+    val objetivo = remember { co.planizaje.app.ui.comp.Objetivo() }
+    var voz by rememberSaveable { mutableStateOf<String?>(if (vozAlAbrir) co.planizaje.core.ia.Ambito.GENERAL.name else null) }
+    val ctx = Ctx(
+        p, grua, gruas, accesorios, ev, nav, { c, f -> almacen.actualizarProyecto(id, c, f) }, { indice = it.ordinal },
+        irACampo = { pp, campo -> indice = pp.ordinal; objetivo.clave = campo },
+        abrirVoz = { voz = it.name },
+    )
     val scroll = rememberScrollState()
     LaunchedEffect(indice) { scroll.scrollTo(0) }
 
@@ -127,7 +138,10 @@ fun PantallaAsistente(nav: NavController, id: String, pasoInicial: Int, onAtras:
             Column {
                 BarraSuperior(
                     p.titulo, onAtras, subtitulo = "Paso ${paso.numero} de ${pasos.size} · ${paso.titulo}",
-                    acciones = { IconButton(onClick = { nav.popBackStack(Rutas.INICIO, false) }) { Icon(Icons.Filled.Home, "Inicio") } },
+                    acciones = {
+                        IconButton(onClick = { voz = ambitoDe(paso).name }) { Icon(Icons.Filled.Mic, "Completar con voz") }
+                        IconButton(onClick = { nav.popBackStack(Rutas.INICIO, false) }) { Icon(Icons.Filled.Home, "Inicio") }
+                    },
                 )
                 Pasos(p, ev, indice) { indice = it }
                 LinearProgressIndicator(
@@ -159,10 +173,13 @@ fun PantallaAsistente(nav: NavController, id: String, pasoInicial: Int, onAtras:
             }
         },
     ) { pad ->
+        androidx.compose.runtime.CompositionLocalProvider(co.planizaje.app.ui.comp.LocalObjetivo provides objetivo) {
         Column(
             Modifier.fillMaxSize().padding(pad).verticalScroll(scroll).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            if (paso != Paso.VERIFICACION && paso != Paso.PDF) BotonVoz(paso) { voz = ambitoDe(paso).name }
+            PanelAsistente(ctx, paso)
             when (paso) {
                 Paso.INFO -> PasoInfo(ctx)
                 Paso.GRUA -> PasoGrua(ctx)
@@ -179,6 +196,28 @@ fun PantallaAsistente(nav: NavController, id: String, pasoInicial: Int, onAtras:
                 textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             )
         }
+        }
+    }
+    voz?.let { a -> co.planizaje.app.voz.HojaVoz(co.planizaje.core.ia.Ambito.valueOf(a), p.id, null) { voz = null } }
+}
+
+fun ambitoDe(paso: Paso): co.planizaje.core.ia.Ambito = when (paso) {
+    Paso.INFO -> co.planizaje.core.ia.Ambito.INFO
+    Paso.GRUA -> co.planizaje.core.ia.Ambito.GRUA_PASO
+    Paso.CARGA -> co.planizaje.core.ia.Ambito.CARGA
+    Paso.CROQUIS -> co.planizaje.core.ia.Ambito.CROQUIS
+    Paso.MANIOBRA -> co.planizaje.core.ia.Ambito.MANIOBRA
+    else -> co.planizaje.core.ia.Ambito.GENERAL
+}
+
+@Composable
+private fun BotonVoz(paso: Paso, onClick: () -> Unit) {
+    androidx.compose.material3.FilledTonalButton(
+        onClick = onClick, modifier = Modifier.fillMaxWidth().height(52.dp),
+        colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(containerColor = Paleta.AmbarClaro, contentColor = Paleta.Azul),
+    ) {
+        Icon(Icons.Filled.Mic, null); Spacer(Modifier.width(8.dp))
+        Text(if (paso == Paso.INFO) "Hablar del izaje" else "Completar «${paso.titulo.lowercase()}» con voz")
     }
 }
 

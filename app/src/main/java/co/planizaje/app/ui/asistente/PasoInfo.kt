@@ -37,16 +37,16 @@ fun PasoInfo(c: Ctx) {
     Ayuda("Empieza por lo básico. Solo los campos con * son necesarios para el plan; el resto puedes completarlo después.")
 
     Seccion("Proyecto", icono = Icons.Filled.Business) {
-        CampoTexto(p.nombre, { v -> c.actualizar("Datos del proyecto") { it.copy(nombre = v) } }, "Nombre del proyecto", obligatorio = true, marcador = "Ej. Montaje de tanque en cubierta")
-        CampoTexto(p.descripcion, { v -> c.actualizar("Datos del proyecto") { it.copy(descripcion = v) } }, "Descripción del trabajo", obligatorio = true, multilinea = true)
-        CampoTexto(p.ubicacion, { v -> c.actualizar("Datos del proyecto") { it.copy(ubicacion = v) } }, "Ubicación de la obra", obligatorio = true, marcador = "Dirección, ciudad")
-        CampoFecha(p.fecha, { v -> c.actualizar("Datos del proyecto") { it.copy(fecha = v) } }, "Fecha de la maniobra", obligatorio = true)
-        CampoTexto(p.cliente, { v -> c.actualizar("Datos del proyecto") { it.copy(cliente = v) } }, "Cliente")
-        CampoTexto(p.empresa, { v -> c.actualizar("Datos del proyecto") { it.copy(empresa = v) } }, "Empresa responsable de la maniobra")
+        CampoTexto(p.nombre, { v -> c.actualizar("Datos del proyecto") { it.copy(nombre = v) } }, "Nombre del proyecto", obligatorio = true, clave = "nombre", marcador = "Ej. Montaje de tanque en cubierta")
+        CampoTexto(p.descripcion, { v -> c.actualizar("Datos del proyecto") { it.copy(descripcion = v) } }, "Descripción del trabajo", obligatorio = true, multilinea = true, clave = "descripcion")
+        CampoTexto(p.ubicacion, { v -> c.actualizar("Datos del proyecto") { it.copy(ubicacion = v) } }, "Ubicación de la obra", obligatorio = true, clave = "ubicacion", marcador = "Dirección, ciudad")
+        CampoFecha(p.fecha, { v -> c.actualizar("Datos del proyecto") { it.copy(fecha = v) } }, "Fecha de la maniobra", obligatorio = true, clave = "fecha")
+        CampoTexto(p.cliente, { v -> c.actualizar("Datos del proyecto") { it.copy(cliente = v) } }, "Cliente", clave = "cliente")
+        CampoTexto(p.empresa, { v -> c.actualizar("Datos del proyecto") { it.copy(empresa = v) } }, "Empresa responsable de la maniobra", clave = "empresa")
     }
 
     Seccion("Responsables", icono = Icons.Filled.Badge) {
-        CampoTexto(p.elaboradoPor, { v -> c.actualizar("Responsables") { it.copy(elaboradoPor = v) } }, "Elaborado por", obligatorio = true)
+        CampoTexto(p.elaboradoPor, { v -> c.actualizar("Responsables") { it.copy(elaboradoPor = v) } }, "Elaborado por", obligatorio = true, clave = "elaboradoPor")
         CampoTexto(p.revisorPrevisto, { v -> c.actualizar("Responsables") { it.copy(revisorPrevisto = v) } }, "Responsable de revisión", ayuda = "La revisión se registra en el paso 6, no aquí.")
         CampoTexto(p.aprobadorPrevisto, { v -> c.actualizar("Responsables") { it.copy(aprobadorPrevisto = v) } }, "Responsable de aprobación")
         Ayuda("La app no genera firmas. El PDF deja espacios para firmar a mano.")
