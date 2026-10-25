@@ -82,8 +82,20 @@ jobs:
           profile: pixel_4
           disable-animations: true
           script: |
-            gradle :app:connectedDebugAndroidTest --no-daemon > salida-emulador.txt 2>&1 || (adb logcat -d -s OCR_PLANIZAJE:I > ocr.txt; tail -c 20000 salida-emulador.txt; exit 1)
+            gradle :app:connectedDebugAndroidTest --no-daemon > salida-emulador.txt 2>&1 || (adb logcat -d -s OCR_PLANIZAJE:I > ocr.txt; adb pull /sdcard/Android/data/co.planizaje.app/files/ocr ocr-dump; tail -c 20000 salida-emulador.txt; exit 1)
             adb logcat -d -s OCR_PLANIZAJE:I > ocr.txt
+            adb pull /sdcard/Android/data/co.planizaje.app/files/ocr ocr-dump || true
+      - name: Publicar volcado OCR en la rama datos-ocr
+        if: always()
+        run: |
+          if [ -d ocr-dump ]; then
+            git config user.name "github-actions"; git config user.email "actions@github.com"
+            git checkout --orphan datos-ocr-tmp
+            git rm -rq --cached . || true
+            git add -f ocr-dump
+            git commit -qm "Volcado OCR ${{ github.run_number }}"
+            git push -f origin HEAD:refs/heads/datos-ocr
+          fi
       - name: Informe de lectura OCR de las placas reales
         if: always()
         run: |

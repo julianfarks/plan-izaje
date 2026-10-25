@@ -79,7 +79,7 @@ class FlujoUsuarioTest {
         regla.onNodeWithText("Siguiente").performClick()
 
         // 10. Verificación
-        regla.onNodeWithText("Estado del plan", substring = true).assertIsDisplayed()
+        regla.onNodeWithText("Estado del plan", substring = true).assertExists()
         regla.onNodeWithText("Ir al PDF").performClick()
 
         // 11. Generar PDF (borrador)

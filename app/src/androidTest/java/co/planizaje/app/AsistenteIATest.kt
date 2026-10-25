@@ -116,7 +116,14 @@ class LecturaTablasRealesTest {
         var aciertosHiab111 = 0
         for ((asset, esperado) in esperados) {
             val bmp = ctx.assets.open(asset).use { BitmapFactory.decodeStream(it) }
-            val l = LectorTabla.leer(Imagenes.ocr(Imagenes.mejorar(bmp)))
+            val frags = Imagenes.ocr(Imagenes.mejorar(bmp))
+            // Volcado para análisis y para pruebas de regresión del lector
+            runCatching {
+                val dir = java.io.File(ctx.getExternalFilesDir(null), "ocr").apply { mkdirs() }
+                val txt = frags.joinToString("\n") { f -> listOf(f.texto.replace("\t", " "), f.x, f.y, f.ancho, f.alto, f.confianza ?: -1f).joinToString("\t") }
+                java.io.File(dir, asset.substringAfterLast('/') + ".tsv").writeText("#${bmp.width}x${bmp.height}\n" + txt)
+            }
+            val l = LectorTabla.leer(frags)
             val todos = l.tablas.flatMap { it.puntos }
             val aciertos = esperado.count { (r, c) -> todos.any { kotlin.math.abs(it.radio - r) < 0.01 && kotlin.math.abs(it.capacidad - c) < 0.5 } }
             val erroneos = todos.count { p -> esperado.any { kotlin.math.abs(it.first - p.radio) < 0.01 } && esperado.none { kotlin.math.abs(it.first - p.radio) < 0.01 && kotlin.math.abs(it.second - p.capacidad) < 0.5 } }
