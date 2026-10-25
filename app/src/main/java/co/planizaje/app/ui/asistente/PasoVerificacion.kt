@@ -140,18 +140,21 @@ private fun RevisionHumanaSeccion(c: Ctx) {
     val r = c.p.revisionHumana
     fun upd(desc: String, f: (RevisionHumana) -> RevisionHumana) = c.actualizar(desc) { it.copy(revisionHumana = f(it.revisionHumana)) }
     val borrador = c.ev.estadoDocumento.esBorrador
+    val huella = co.planizaje.core.data.Serializacion.huellaRevision(c.p, c.grua, c.accesorios)
+    val caducada = r.confirmaRevision && r.huellaDatos != huella
     Seccion("Revisión humana", icono = Icons.Filled.HowToReg, subtitulo = "Se registra en el plan; no reemplaza la firma") {
+        if (caducada) Aviso("Los datos del plan cambiaron después de registrar la revisión. La revisión ya no es válida: debe revisarse de nuevo.", Paleta.Mal, Paleta.MalFondo, "✕")
         if (borrador) Aviso("Mientras el plan sea borrador no se puede registrar revisión ni aprobación. Resuelve primero los puntos pendientes.", Paleta.Pendiente, Paleta.PendienteFondo, "…")
         CampoTexto(r.revisadoPor, { v -> upd("Revisión humana") { it.copy(revisadoPor = v) } }, "Revisado por")
         CampoFecha(r.fechaRevision, { v -> upd("Revisión humana") { it.copy(fechaRevision = v) } }, "Fecha de revisión")
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(r.confirmaRevision, { b -> upd("Revisión humana") { it.copy(confirmaRevision = b) } }, enabled = !borrador && r.revisadoPor.isNotBlank())
+            Checkbox(r.confirmaRevision && !caducada, { b -> upd("Revisión humana") { it.copy(confirmaRevision = b, huellaDatos = if (b) huella else "", confirmaAprobacion = if (b) it.confirmaAprobacion else false) } }, enabled = !borrador && r.revisadoPor.isNotBlank())
             Text("Confirmo que revisé datos, cálculos, hipótesis y limitaciones", style = MaterialTheme.typography.bodyMedium)
         }
         CampoTexto(r.aprobadoPor, { v -> upd("Aprobación") { it.copy(aprobadoPor = v) } }, "Aprobado por")
         CampoFecha(r.fechaAprobacion, { v -> upd("Aprobación") { it.copy(fechaAprobacion = v) } }, "Fecha de aprobación")
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(r.confirmaAprobacion, { b -> upd("Aprobación") { it.copy(confirmaAprobacion = b) } }, enabled = !borrador && r.confirmaRevision && r.aprobadoPor.isNotBlank())
+            Checkbox(r.confirmaAprobacion && !caducada, { b -> upd("Aprobación") { it.copy(confirmaAprobacion = b) } }, enabled = !borrador && r.confirmaRevision && r.aprobadoPor.isNotBlank())
             Text("La persona indicada aprobó el plan", style = MaterialTheme.typography.bodyMedium)
         }
         CampoTexto(r.comentarios, { v -> upd("Comentarios de revisión") { it.copy(comentarios = v) } }, "Comentarios de la revisión", multilinea = true)

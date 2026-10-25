@@ -67,6 +67,10 @@ object Serializacion {
      * Huella de los datos que influyen en el plan. Si cambia después de generar un PDF,
      * ese PDF queda marcado como desactualizado.
      */
+    /** Huella sin la revisión humana: es la que se guarda al registrar una revisión. */
+    fun huellaRevision(p: Proyecto, g: Grua?, accesorios: List<Accesorio>): String =
+        huella(p.copy(revisionHumana = co.planizaje.core.model.RevisionHumana()), g, accesorios)
+
     fun huella(p: Proyecto, g: Grua?, accesorios: List<Accesorio>): String {
         val limpio = p.copy(
             historial = emptyList(), versionesPdf = emptyList(), modificado = 0L,

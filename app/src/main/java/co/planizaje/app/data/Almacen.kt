@@ -70,7 +70,8 @@ class Almacen(private val ctx: Context) {
 
     init {
         listOf(dirProyectos, dirGruas, dirAccesorios, dirAdjuntos, dirPlanes, dirCopias).forEach { it.mkdirs() }
-        scope.launch { cargarTodo() }
+        // Carga síncrona: son archivos JSON pequeños y así ninguna pantalla ve la lista vacía al arrancar.
+        cargarTodo()
     }
 
     // ------------------------------------------------------------------ carga

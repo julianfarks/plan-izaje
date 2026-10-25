@@ -55,15 +55,11 @@ object PlantillasGruas {
             "Ángulo de pluma indicado 28°.",
         ),
         PlantillaGrua(
-            "pk23500", "Palfinger", "PK 23500", "", null, "diagramas/palfinger_pk23500.png", "Placa EB 4217",
+            "pk23500", "Palfinger", "PK 23500", "", 6, "diagramas/palfinger_pk23500.png", "Placa EB 4217",
             listOf(
-                Triple("Fila E (superior)", "Fila E superior", listOf(4.6 to 4520.0, 6.1 to 3180.0, 8.0 to 2280.0, 10.1 to 1700.0, 12.3 to 1340.0, 14.4 to 1110.0, 16.5 to 960.0)),
-                Triple("Fila D", "Fila D", listOf(4.6 to 4590.0, 6.1 to 3260.0, 8.0 to 2370.0, 10.1 to 1800.0, 12.3 to 1450.0, 14.4 to 1210.0)),
-                Triple("Fila C", "Fila C", listOf(4.6 to 4590.0, 6.1 to 3260.0, 8.0 to 2480.0, 10.1 to 1920.0, 12.3 to 1920.0)),
-                Triple("Fila A", "Fila A", listOf(4.6 to 4520.0, 6.1 to 3470.0, 8.0 to 2600.0, 10.1 to 2040.0)),
-                Triple("Fila E (inferior)", "Fila E inferior", listOf(4.6 to 4800.0, 6.1 to 3230.0, 8.0 to 2730.0)),
+                Triple("6 extensiones (fila E superior)", "Pluma con 6 extensiones hidráulicas · fila E superior de la placa", listOf(4.6 to 4520.0, 6.1 to 3180.0, 8.0 to 2280.0, 10.1 to 1700.0, 12.3 to 1340.0, 14.4 to 1110.0, 16.5 to 960.0)),
             ),
-            "ATENCIÓN: la imagen recibida presenta inconsistencias (la fila «E» aparece dos veces, la fila C repite 1920 kg en 10,1 y 12,3 m). Puede no ser la placa real. Sustituir por una foto de la placa de su propia grúa antes de verificar. Los valores «max» (5600–6100 kg) no indican radio y no se incluyen.",
+            "Según el usuario, su PK 23500 tiene 6 extensiones y aplica la fila E superior. El valor «max 5600 kg» no indica radio y no se incluye. Verifique cada valor contra la placa de cabina de su propia grúa (nº de serie) antes de marcar la tabla como verificada.",
         ),
     )
 
@@ -79,6 +75,7 @@ object PlantillasGruas {
             tablas = pl.tablas.map { (nombre, config, pts) ->
                 TablaCarga(
                     id = nuevoId(), nombre = nombre, configuracionPluma = config,
+                    extensiones = if (pl.tablas.size == 1) pl.extensionesHidraulicas else null,
                     puntos = pts.map { PuntoTabla(it.first, it.second) },
                     fuente = fuenteBase,
                     verificacion = Verificacion(),

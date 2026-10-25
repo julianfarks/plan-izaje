@@ -346,6 +346,22 @@ class MotorTest {
         assertTrue(f.any { it.texto.contains("grúa", ignoreCase = true) })
     }
 
+    @Test fun revisionHumanaCaducaSiCambianLosDatos() {
+        val g = grua.copy(estabilizadores = listOf(ConfigEstabilizadores("e1", fuerzaMaxApoyoKn = 50.0, fuente = FuenteTecnica("Manual", "p. 3"))), pesoGanchoKg = 0.0)
+        val acc = listOf(eslinga, eslinga2)
+        var p = proyectoBase().let { it.copy(
+            maniobra = it.maniobra.copy(estabilizadoresId = "e1", placaAncho = 0.6, placaLargo = 0.6, presionAdmisibleKpa = 300.0, fuentePresionAdmisible = "Estudio"),
+            aparejo = it.aparejo.copy(metodoAngulo = MetodoAngulo.GEOMETRIA, longitudRamal = 2.0, separacionPuntos = 2.0),
+        ) }
+        val base = Motor.evaluar(p, g, acc, hoy)
+        assertEquals(EstadoDocumento.LISTO_PARA_REVISION, base.estadoDocumento)
+        val h = Serializacion.huellaRevision(p, g, acc)
+        p = p.copy(revisionHumana = RevisionHumana("Rev", "2026-10-25", true, huellaDatos = h))
+        assertEquals(EstadoDocumento.REVISADO, Motor.evaluar(p, g, acc, hoy).estadoDocumento)
+        val cambiado = p.copy(carga = p.carga.copy(pesoKg = 1400.0))
+        assertEquals(EstadoDocumento.LISTO_PARA_REVISION, Motor.evaluar(cambiado, g, acc, hoy).estadoDocumento)
+    }
+
     @Test fun aprobacionSoloSiSeRegistraExplicitamente() {
         val ev = Motor.evaluar(proyectoBase(), grua, listOf(eslinga, eslinga2), hoy)
         assertNotEquals(EstadoDocumento.APROBACION_REGISTRADA, ev.estadoDocumento)

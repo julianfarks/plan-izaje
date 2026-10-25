@@ -490,6 +490,8 @@ data class RevisionHumana(
     val fechaAprobacion: String = "",
     val confirmaAprobacion: Boolean = false,
     val comentarios: String = "",
+    /** Huella de los datos en el momento de registrar la revisión; si cambian, la revisión deja de valer. */
+    val huellaDatos: String = "",
 )
 
 @Serializable

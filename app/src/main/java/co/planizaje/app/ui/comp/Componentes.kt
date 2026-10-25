@@ -196,7 +196,7 @@ fun CampoPeso(valorKg: Double?, onCambio: (Double?) -> Unit, etiqueta: String, a
                     SegmentedButton(
                         selected = unidad == u, onClick = { unidad = u },
                         shape = SegmentedButtonDefaults.itemShape(i, UnidadPeso.entries.size),
-                    ) { Text(if (u == UnidadPeso.KG) "Kilogramos (kg)" else "Toneladas (t)") }
+                    ) { Text(if (u == UnidadPeso.KG) "kg" else "toneladas") }
                 }
             }
         }

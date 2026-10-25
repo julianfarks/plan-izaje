@@ -169,7 +169,8 @@ object Motor {
 
         val lista = res.toList()
         val faltantes = faltantes(p, grua, tabla)
-        val estadoDoc = estadoDocumento(p, lista, faltantes)
+        val huella = co.planizaje.core.data.Serializacion.huellaRevision(p, grua, biblioteca)
+        val estadoDoc = estadoDocumento(p, lista, faltantes, huella)
         return Evaluacion(lista, faltantes, estadoDoc, radioMax, utilMax, total)
     }
 
@@ -539,7 +540,7 @@ object Motor {
             veredicto = ver,
             formula = "Distancia mínima en planta entre el recorrido de la carga / línea de pluma y cada elemento",
             hipotesis = listOf("Posiciones tomadas del croquis (aproximadas salvo medidas verificadas)."),
-            mensajes = msgs, paso = Paso.CROQUIS,
+            mensajes = msgs, paso = Paso.CROQUIS, bloqueante = false,
         )
     }
 
@@ -583,11 +584,12 @@ object Motor {
         if (pr.secuencia.isBlank()) add(Faltante(Paso.MANIOBRA, "Secuencia de la maniobra"))
     }
 
-    fun estadoDocumento(p: Proyecto, res: List<Resultado>, falt: List<Faltante>): EstadoDocumento {
+    fun estadoDocumento(p: Proyecto, res: List<Resultado>, falt: List<Faltante>, huellaActual: String? = null): EstadoDocumento {
         if (res.any { it.veredicto == Veredicto.NO_CUMPLE }) return EstadoDocumento.BORRADOR_NO_CUMPLE
         if (falt.isNotEmpty() || res.any { it.bloquea }) return EstadoDocumento.BORRADOR
         val r = p.revisionHumana
-        val revisado = r.confirmaRevision && r.revisadoPor.isNotBlank() && r.fechaRevision.isNotBlank()
+        val vigente = huellaActual == null || r.huellaDatos == huellaActual
+        val revisado = vigente && r.confirmaRevision && r.revisadoPor.isNotBlank() && r.fechaRevision.isNotBlank()
         val aprobado = revisado && r.confirmaAprobacion && r.aprobadoPor.isNotBlank() && r.fechaAprobacion.isNotBlank()
         return when {
             aprobado -> EstadoDocumento.APROBACION_REGISTRADA

@@ -38,8 +38,15 @@ data class Resultado(
     val fuente: String = "",
     val mensajes: List<String> = emptyList(),
     val paso: Paso = Paso.VERIFICACION,
+    /**
+     * false para comprobaciones orientativas (p. ej. interferencias en planta): su «requiere revisión»
+     * se traslada al revisor humano y no impide marcar el plan como listo para revisión.
+     * Un NO_CUMPLE o un dato PENDIENTE siempre bloquean.
+     */
+    val bloqueante: Boolean = true,
 ) {
-    val bloquea: Boolean get() = estado != EstadoDato.DOCUMENTADO || veredicto == Veredicto.NO_CUMPLE
+    val bloquea: Boolean get() = veredicto == Veredicto.NO_CUMPLE || estado == EstadoDato.PENDIENTE || estado == EstadoDato.NO_VERIFICABLE ||
+        (bloqueante && estado != EstadoDato.DOCUMENTADO)
 }
 
 data class Faltante(val paso: Paso, val texto: String)
