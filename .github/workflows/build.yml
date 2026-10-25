@@ -81,7 +81,20 @@ jobs:
           arch: x86_64
           profile: pixel_4
           disable-animations: true
-          script: gradle :app:connectedDebugAndroidTest --no-daemon
+          script: gradle :app:connectedDebugAndroidTest --no-daemon > salida-emulador.txt 2>&1 || (tail -c 20000 salida-emulador.txt; exit 1)
+      - name: Publicar errores como anotaciones
+        if: failure()
+        run: |
+          grep -hE "^e: |FAILED|Exception|Error:|expected|Assertion" salida-emulador.txt | head -40 | while IFS= read -r l; do echo "::error::${l:0:900}"; done || true
+          for f in $(find app/build/outputs/androidTest-results -name "*.xml" 2>/dev/null); do
+            python3 - "$f" <<'PY'
+          import sys, xml.etree.ElementTree as ET
+          for tc in ET.parse(sys.argv[1]).iter('testcase'):
+              for fl in list(tc.iter('failure')) + list(tc.iter('error')):
+                  msg = (fl.get('message') or fl.text or '').replace('\n', ' | ')[:1500]
+                  print(f"::error title={tc.get('name')}::{msg}")
+          PY
+          done
       - name: Informe de pruebas en emulador
         if: always()
         uses: actions/upload-artifact@v4
