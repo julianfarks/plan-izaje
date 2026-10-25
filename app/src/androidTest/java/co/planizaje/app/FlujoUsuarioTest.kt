@@ -52,7 +52,7 @@ class FlujoUsuarioTest {
         regla.onNodeWithText("Siguiente").performClick()
 
         // 4. Grúa: crear desde el paso abre la ficha; volvemos atrás
-        regla.onNodeWithText("Registrar grúa").performScrollTo().performClick()
+        regla.onNodeWithText("Registrar grúa", substring = true).performScrollTo().performClick()
         regla.waitForIdle()
         regla.onNodeWithContentDescription("Volver").performClick()
         regla.onNodeWithText("Siguiente").performClick()
@@ -63,8 +63,8 @@ class FlujoUsuarioTest {
         regla.onNodeWithText("Siguiente").performClick()
 
         // 6-8. Croquis: plantilla inicial (grúa, recogida, descarga) y un edificio
-        regla.onNodeWithText("Empezar con grúa, recogida y descarga").performScrollTo().performClick()
-        regla.onNodeWithText("Abrir editor de croquis").performScrollTo().performClick()
+        regla.onNodeWithText("Empezar con grúa", substring = true).performScrollTo().performClick()
+        regla.onNodeWithText("Abrir editor de croquis", substring = true).performScrollTo().performClick()
         regla.waitForIdle()
         regla.onNodeWithText("Añadir").performClick()
         regla.onAllNodesWithText("Edificio").onFirst().performClick()
@@ -73,7 +73,7 @@ class FlujoUsuarioTest {
         regla.onNodeWithText("Siguiente").performClick()
 
         // 9. Maniobra: añadir fase y operador
-        regla.onNodeWithText("Añadir fase").performScrollTo().performClick()
+        regla.onNodeWithText("Añadir fase", substring = true).performScrollTo().performClick()
         escribir("Operador de la grúa", "Juan")
         regla.onNodeWithText("Siguiente").performClick()
 
