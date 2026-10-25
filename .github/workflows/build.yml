@@ -85,16 +85,8 @@ jobs:
       - name: Publicar errores como anotaciones
         if: failure()
         run: |
-          grep -hA25 "AssertionError" salida-emulador.txt | grep -v '^\s*at ' | head -40 | tr '\n' '~' | fold -w 900 | while IFS= read -r l; do echo "::error title=detalle::$l"; done || true
-          for f in $(find app/build/outputs/androidTest-results -name "*.xml" 2>/dev/null); do
-            python3 - "$f" <<'PY'
-          import sys, xml.etree.ElementTree as ET
-          for tc in ET.parse(sys.argv[1]).iter('testcase'):
-              for fl in list(tc.iter('failure')) + list(tc.iter('error')):
-                  msg = (fl.get('message') or fl.text or '').replace('\n', ' | ')[:1500]
-                  print(f"::error title={tc.get('name')}::{msg}")
-          PY
-          done
+          grep -hE -A20 "(Exception|Error)[:]" salida-emulador.txt | grep -vE '^\s+at (androidx|java|kotlin|org\.junit|android\.)' | head -45 | tr '\n' '~' | fold -w 900 | while IFS= read -r l; do echo "::error title=detalle::$l"; done
+          exit 0
       - name: Informe de pruebas en emulador
         if: always()
         uses: actions/upload-artifact@v4
