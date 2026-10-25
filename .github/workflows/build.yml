@@ -82,7 +82,7 @@ jobs:
           profile: pixel_4
           disable-animations: true
           script: |
-            gradle :app:connectedDebugAndroidTest --no-daemon > salida-emulador.txt 2>&1 || (adb logcat -d -s OCR_PLANIZAJE:I > ocr.txt; adb pull /sdcard/Android/data/co.planizaje.app/files/ocr ocr-dump; tail -c 20000 salida-emulador.txt; exit 1)
+            gradle :app:connectedDebugAndroidTest --no-daemon -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true > salida-emulador.txt 2>&1 || (adb logcat -d -s OCR_PLANIZAJE:I > ocr.txt; adb pull /sdcard/Android/data/co.planizaje.app/files/ocr ocr-dump; tail -c 20000 salida-emulador.txt; exit 1)
             adb logcat -d -s OCR_PLANIZAJE:I > ocr.txt
             adb pull /sdcard/Android/data/co.planizaje.app/files/ocr ocr-dump || true
       - name: Publicar volcado OCR en la rama datos-ocr

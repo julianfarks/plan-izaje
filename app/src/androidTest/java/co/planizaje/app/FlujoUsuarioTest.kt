@@ -83,7 +83,7 @@ class FlujoUsuarioTest {
         regla.onNodeWithText("Ir al PDF").performClick()
 
         // 11. Generar PDF (borrador)
-        regla.onNodeWithText("Generar borrador PDF", substring = true).performClick()
+        regla.onNodeWithText("Generar borrador PDF", substring = true).performScrollTo().performClick()
         regla.onNode(hasText("Generar borrador") and hasClickAction()).performClick()
         regla.waitUntil(40_000) { almacen.proyecto(id)?.versionesPdf?.isNotEmpty() == true }
 
