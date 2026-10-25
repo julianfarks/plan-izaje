@@ -82,13 +82,14 @@ jobs:
           profile: pixel_4
           disable-animations: true
           script: |
-            gradle :app:connectedDebugAndroidTest --no-daemon -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true > salida-emulador.txt 2>&1 || (adb logcat -d -s OCR_PLANIZAJE:I > ocr.txt; adb pull /sdcard/Android/data/co.planizaje.app/files/ocr ocr-dump; tail -c 20000 salida-emulador.txt; exit 1)
+            gradle :app:connectedDebugAndroidTest --no-daemon -Pandroid.injected.androidTest.leaveApksInstalledAfterRun=true > salida-emulador.txt 2>&1 || (adb logcat -d -s OCR_PLANIZAJE:I > ocr.txt; adb exec-out run-as co.planizaje.app tar c -C files ocr > ocr.tar; mkdir -p ocr-dump; tar xf ocr.tar -C ocr-dump; tail -c 20000 salida-emulador.txt; exit 1)
             adb logcat -d -s OCR_PLANIZAJE:I > ocr.txt
-            adb pull /sdcard/Android/data/co.planizaje.app/files/ocr ocr-dump || true
+            adb exec-out run-as co.planizaje.app tar c -C files ocr > ocr.tar; mkdir -p ocr-dump; tar xf ocr.tar -C ocr-dump || true; ls -la ocr-dump ocr-dump/* > ocr-ls.txt 2>&1 || true
       - name: Publicar volcado OCR en la rama datos-ocr
         if: always()
         run: |
-          if [ -d ocr-dump ]; then
+          cat ocr-ls.txt 2>/dev/null | head -12 | while IFS= read -r l; do echo "::notice title=ocrls::$l"; done
+          if [ -n "$(ls -A ocr-dump 2>/dev/null)" ]; then
             git config user.name "github-actions"; git config user.email "actions@github.com"
             git checkout --orphan datos-ocr-tmp
             git rm -rq --cached . || true

@@ -119,7 +119,7 @@ class LecturaTablasRealesTest {
             val frags = Imagenes.ocr(Imagenes.mejorar(bmp))
             // Volcado para análisis y para pruebas de regresión del lector
             runCatching {
-                val dir = java.io.File(ctx.getExternalFilesDir(null), "ocr").apply { mkdirs() }
+                val dir = java.io.File(ctx.filesDir, "ocr").apply { mkdirs() }
                 val txt = frags.joinToString("\n") { f -> listOf(f.texto.replace("\t", " "), f.x, f.y, f.ancho, f.alto, f.confianza ?: -1f).joinToString("\t") }
                 java.io.File(dir, asset.substringAfterLast('/') + ".tsv").writeText("#${bmp.width}x${bmp.height}\n" + txt)
             }
