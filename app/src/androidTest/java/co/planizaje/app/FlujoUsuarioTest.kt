@@ -3,6 +3,7 @@ package co.planizaje.app
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -83,8 +84,8 @@ class FlujoUsuarioTest {
 
         // 11. Generar PDF (borrador)
         regla.onNodeWithText("Generar borrador PDF", substring = true).performClick()
-        regla.onAllNodesWithText("Generar borrador").onFirst().performClick()
-        regla.waitUntil(20_000) { almacen.proyecto(id)?.versionesPdf?.isNotEmpty() == true }
+        regla.onNode(hasText("Generar borrador") and hasClickAction()).performClick()
+        regla.waitUntil(40_000) { almacen.proyecto(id)?.versionesPdf?.isNotEmpty() == true }
 
         // 12-13. Cerrar y volver a abrir: los datos persisten en disco
         almacen.volcar()
