@@ -57,14 +57,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
+/** Muestra un aviso breve siempre en el hilo principal (seguro desde cualquier hilo). */
+fun avisar(ctx: Context, texto: String, largo: Boolean = false) {
+    android.os.Handler(android.os.Looper.getMainLooper()).post {
+        Toast.makeText(ctx.applicationContext, texto, if (largo) Toast.LENGTH_LONG else Toast.LENGTH_SHORT).show()
+    }
+}
+
 object Archivos {
     fun uri(ctx: Context, f: File): Uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.archivos", f)
 
     fun abrir(ctx: Context, f: File, mime: String) {
-        if (!f.exists()) { Toast.makeText(ctx, "El archivo no existe", Toast.LENGTH_SHORT).show(); return }
+        if (!f.exists()) { avisar(ctx, "El archivo no existe"); return }
         val i = Intent(Intent.ACTION_VIEW).setDataAndType(uri(ctx, f), mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         try { ctx.startActivity(i) } catch (e: ActivityNotFoundException) {
-            Toast.makeText(ctx, "No hay una app instalada para abrir este archivo", Toast.LENGTH_LONG).show()
+            avisar(ctx, "No hay una app instalada para abrir este archivo", true)
         }
     }
 
@@ -105,7 +112,7 @@ fun GaleriaAdjuntos(
     val docs = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             val n = withContext(Dispatchers.IO) { almacen.importarAdjunto(uri) }
-            if (n != null) onCambio(adjuntos + n) else Toast.makeText(ctx, "No se pudo copiar el archivo", Toast.LENGTH_SHORT).show()
+            if (n != null) onCambio(adjuntos + n) else avisar(ctx, "No se pudo copiar el archivo")
         }
     }
     val camara = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->

@@ -1,5 +1,6 @@
 package co.planizaje.app.ui.asistente
 
+import co.planizaje.app.ui.comp.avisar
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -68,7 +69,7 @@ fun PasoPdf(c: Ctx) {
                     it.copy(versionesPdf = it.versionesPdf + s.version)
                 }
                 Archivos.abrir(ctx, s.archivo, "application/pdf")
-            }.onFailure { Toast.makeText(ctx, "No se pudo generar el PDF: ${it.message}", Toast.LENGTH_LONG).show() }
+            }.onFailure { avisar(ctx, "No se pudo generar el PDF: ${it.message}", true) }
         }
     }
 

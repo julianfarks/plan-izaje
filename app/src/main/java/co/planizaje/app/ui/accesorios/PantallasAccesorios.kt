@@ -18,7 +18,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.FactCheck
+import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Scale
@@ -155,7 +155,7 @@ fun EditorAccesorio(id: String, onAtras: () -> Unit) {
                 CampoTexto(a.configuracionPermitida, { v -> upd { it.copy(configuracionPermitida = v) } }, "Configuraciones permitidas / limitaciones", multilinea = true)
                 CampoNumero(a.cargaRotura, { v -> upd { it.copy(cargaRotura = v) } }, "Carga de rotura (solo informativa)", "kg", ayuda = "No se usa en ningún cálculo")
             }
-            Seccion("Certificado e inspección", icono = Icons.Filled.FactCheck) {
+            Seccion("Certificado e inspección", icono = Icons.AutoMirrored.Filled.FactCheck) {
                 CampoTexto(a.numeroCertificado, { v -> upd { it.copy(numeroCertificado = v) } }, "Número de certificado")
                 CampoFecha(a.fechaInspeccion, { v -> upd { it.copy(fechaInspeccion = v) } }, "Fecha de última inspección")
                 CampoFecha(a.proximaInspeccion, { v -> upd { it.copy(proximaInspeccion = v) } }, "Próxima inspección")

@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FactCheck
+import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.filled.HowToReg
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -68,7 +68,7 @@ fun PasoVerificacion(c: Ctx) {
     val ev = c.ev
     ResumenEstado(ev.estadoDocumento, ev.puntosPorResolver)
 
-    Seccion("Resumen", icono = Icons.Filled.FactCheck) {
+    Seccion("Resumen", icono = Icons.AutoMirrored.Filled.FactCheck) {
         FilaDato("Masa total suspendida", Unidades.kgYt(ev.masaTotal))
         FilaDato("Radio máximo", Unidades.m(ev.radioGobernante))
         FilaDato("Utilización máxima", Unidades.pct(ev.utilizacionMax))

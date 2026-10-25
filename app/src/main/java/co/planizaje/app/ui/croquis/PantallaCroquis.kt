@@ -1,5 +1,6 @@
 package co.planizaje.app.ui.croquis
 
+import co.planizaje.app.ui.comp.avisar
 import android.graphics.Bitmap
 import android.widget.Toast
 import androidx.compose.foundation.Canvas
@@ -166,7 +167,7 @@ fun PantallaCroquis(id: String, onAtras: () -> Unit) {
 
     fun agregar(tipo: TipoElemento) {
         if (tipo == TipoElemento.GRUA && cr.grua != null) {
-            Toast.makeText(ctx, "Ya hay una grúa en el croquis; se seleccionó.", Toast.LENGTH_SHORT).show()
+            avisar(ctx, "Ya hay una grúa en el croquis; se seleccionó.")
             seleccion = cr.grua?.id; herramienta = Herramienta.SELECCIONAR; return
         }
         val c = snap(centro())
@@ -251,7 +252,7 @@ fun PantallaCroquis(id: String, onAtras: () -> Unit) {
                 NavigationBarItem(false, {
                     val s = seleccion
                     if (s != null) { confirmar(cr.copy(elementos = cr.elementos.filter { it.id != s }), desc = "Elemento eliminado"); seleccion = null }
-                    else Toast.makeText(ctx, "Toca un objeto para seleccionarlo y luego elimínalo", Toast.LENGTH_SHORT).show()
+                    else avisar(ctx, "Toca un objeto para seleccionarlo y luego elimínalo")
                 }, { Icon(Icons.Filled.Delete, null) }, label = { Text("Eliminar") }, enabled = sel != null)
             }
         },
@@ -411,7 +412,7 @@ fun PantallaCroquis(id: String, onAtras: () -> Unit) {
                                         val e = Elemento(nuevoId(), t.tipo, capaPorDefecto(t.tipo), o.x, o.y, puntos = pts.map { Pt(it.x - o.x, it.y - o.y) })
                                         confirmar(cr.copy(elementos = cr.elementos + e), desc = "Dibujado: ${t.tipo.etiqueta}")
                                         seleccion = e.id
-                                    } else Toast.makeText(ctx, "Necesitas al menos $min puntos", Toast.LENGTH_SHORT).show()
+                                    } else avisar(ctx, "Necesitas al menos $min puntos")
                                 }
                                 is Trazo.Recorrido -> almacen.actualizarProyecto(id, "Recorrido de la carga") { pr ->
                                     pr.copy(maniobra = pr.maniobra.copy(fases = pr.maniobra.fases.map { if (it.id == t.faseId) it.copy(recorrido = pts) else it }))
@@ -462,10 +463,10 @@ fun PantallaCroquis(id: String, onAtras: () -> Unit) {
                                 onCambio = { f -> cambiarElem(sel.id, f) },
                                 onDuplicar = {
                                     val d = sel.copy(id = nuevoId(), x = sel.x + 1.0, y = sel.y + 1.0, bloqueado = false)
-                                    if (d.tipo == TipoElemento.GRUA) Toast.makeText(ctx, "Solo puede haber una grúa", Toast.LENGTH_SHORT).show()
+                                    if (d.tipo == TipoElemento.GRUA) avisar(ctx, "Solo puede haber una grúa")
                                     else { confirmar(cr.copy(elementos = cr.elementos + d), desc = "Elemento duplicado"); seleccion = d.id }
                                 },
-                                onCopiar = { portapapeles = sel; Toast.makeText(ctx, "Copiado", Toast.LENGTH_SHORT).show() },
+                                onCopiar = { portapapeles = sel; avisar(ctx, "Copiado") },
                                 puedePegar = portapapeles != null && portapapeles?.tipo != TipoElemento.GRUA,
                                 onPegar = {
                                     portapapeles?.let { pp ->
