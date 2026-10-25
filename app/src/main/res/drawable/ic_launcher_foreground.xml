@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Pluma articulada estilizada -->
+    <path android:fillColor="#00000000" android:strokeColor="#FFF2A900"
+        android:strokeWidth="6" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M34,76 L46,44 L76,36" />
+    <!-- Base -->
+    <path android:fillColor="#FFF2A900" android:pathData="M26,74h18v8h-18z" />
+    <!-- Cable -->
+    <path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="2.5"
+        android:pathData="M76,36 L76,56" />
+    <!-- Gancho -->
+    <path android:fillColor="#00000000" android:strokeColor="#FFFFFFFF" android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M76,56 C76,66 66,66 66,60" />
+    <!-- Articulación -->
+    <path android:fillColor="#FFFFFFFF" android:pathData="M46,44m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+</vector>

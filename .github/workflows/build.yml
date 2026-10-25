@@ -1,0 +1,57 @@
+name: Compilar APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Pruebas del núcleo de cálculo
+        run: gradle :core:test --no-daemon --stacktrace
+
+      - name: Pruebas unitarias de la app
+        run: gradle :app:testDebugUnitTest --no-daemon
+
+      - name: Compilar APK
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Renombrar APK
+        run: |
+          mkdir -p salida
+          cp app/build/outputs/apk/release/app-release.apk salida/PlanIzaje-1.0.${{ github.run_number }}.apk
+          ls -la salida
+
+      - name: Informe de pruebas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-pruebas
+          path: core/build/reports/tests/
+
+      - name: Publicar Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: PlanIzaje 1.0.${{ github.run_number }}
+          body: |
+            APK de PlanIzaje compilado automáticamente desde `${{ github.sha }}`.
+            Descarga el archivo .apk de abajo e instálalo en tu Android.
+          files: salida/PlanIzaje-1.0.${{ github.run_number }}.apk
+          make_latest: true

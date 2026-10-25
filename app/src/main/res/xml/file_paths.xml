@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <files-path name="planes" path="planes/" />
+    <files-path name="adjuntos" path="adjuntos/" />
+    <files-path name="copias" path="copias/" />
+    <cache-path name="cache" path="." />
+</paths>

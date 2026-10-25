@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <include domain="file" path="datos/" />
+    <include domain="file" path="adjuntos/" />
+</full-backup-content>
