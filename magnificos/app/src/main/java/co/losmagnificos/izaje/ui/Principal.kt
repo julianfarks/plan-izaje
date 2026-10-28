@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,7 +27,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.Fact
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -234,7 +233,7 @@ fun PantallaPrincipal(vm: AppViewModel, voz: ControlVoz) {
             }
         }
 
-        item { BotonPrimario("Revisar datos", { vm.revisar() }, icono = Icons.Filled.Fact) }
+        item { BotonPrimario("Revisar datos", { vm.revisar() }, icono = Icons.Filled.Checklist) }
         item { BotonContorno("Generar PDF", { vm.pedirPdf() }, Modifier.fillMaxWidth(), Icons.Filled.PictureAsPdf) }
 
         // Historial

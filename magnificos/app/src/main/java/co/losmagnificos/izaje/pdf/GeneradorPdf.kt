@@ -177,11 +177,11 @@ class GeneradorPdf(private val ctx: Context, private val dirPdf: File) {
             acc += "Cantidad de eslingas" to (d.nEslingas?.toString() ?: "PENDIENTE")
             acc += "Capacidad de cada eslinga (informada)" to (d.wllEslingaKg?.let { Formato.kgYt(it) + " — verificar contra la etiqueta" } ?: "PENDIENTE")
             acc += "Tipo de amarre" to (d.amarre?.etiqueta ?: "No informado (se calculó como ramales directos)")
-            val pesoEsl = d.eslingasKg ?: if (d.eslingaUnitKg != null && d.nEslingas != null) d.eslingaUnitKg * d.nEslingas else null
+            val pesoEsl = d.eslingasKg ?: d.eslingaUnitKg?.let { u -> d.nEslingas?.let { n -> u * n } }
             acc += "Peso de las eslingas" to (pesoEsl?.let { Formato.kg(it) } ?: "No informado")
         }
         acc += "Gancho" to (d.ganchoKg?.let { Formato.kg(it) } ?: "Peso no informado")
-        val grillete = d.grilletesKg ?: if (d.grilleteUnitKg != null && d.nGrilletes != null) d.grilleteUnitKg * d.nGrilletes else null
+        val grillete = d.grilletesKg ?: d.grilleteUnitKg?.let { u -> d.nGrilletes?.let { n -> u * n } }
         if (grillete != null || d.nGrilletes != null) acc += "Grilletes" to ((d.nGrilletes?.let { "$it · " } ?: "") + (grillete?.let { Formato.kg(it) } ?: "peso no informado"))
         d.balancinKg?.let { acc += "Balancín / barra separadora" to Formato.kg(it) }
         d.otrosKg?.let { acc += "Otros accesorios" to Formato.kg(it) }
