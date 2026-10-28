@@ -3,6 +3,9 @@ name: Compilar APK
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'magnificos/**'
+      - '.github/workflows/build-magnificos.yml'
   workflow_dispatch:
 
 permissions:
