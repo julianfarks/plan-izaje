@@ -33,7 +33,16 @@ jobs:
         run: gradle :core:test --no-daemon --stacktrace
 
       - name: Compilar APK
-        run: gradle :app:assembleRelease --no-daemon --stacktrace
+        run: |
+          set +e
+          gradle :app:assembleRelease --no-daemon --stacktrace > compilacion.log 2>&1
+          code=$?
+          if [ $code -ne 0 ]; then
+            for i in 1 2 3 4 5 6; do :; done
+            grep -E "^e: |error:|What went wrong|Execution failed|Unresolved|FAILURE" -A2 compilacion.log | head -c 9000 | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"}{print}' > errores.txt
+            echo "::error title=Errores de compilacion::$(cat errores.txt)"
+          fi
+          exit $code
 
       - name: Renombrar APK
         run: |
